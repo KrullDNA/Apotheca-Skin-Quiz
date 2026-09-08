@@ -54,6 +54,8 @@ final class Apotheca_Skin_Quiz {
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-ajax.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-email.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-leads.php';
+        require_once ASQ_PLUGIN_DIR . 'includes/class-asq-reports.php';
+        require_once ASQ_PLUGIN_DIR . 'includes/class-asq-privacy.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-connectors.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-integrations.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-dependencies.php';

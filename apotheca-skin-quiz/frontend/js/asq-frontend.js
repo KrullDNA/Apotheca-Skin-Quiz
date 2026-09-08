@@ -148,6 +148,9 @@
             if (!q) return;
             this.view = 'question';
 
+            // Anonymous funnel: note this question was reached (once per session).
+            this.trackReach(idx);
+
             // When auto-advancing from a single-select tap, suppress pointer
             // events on the incoming answers so the browser cannot apply a
             // ghost hover / active state to whatever element lands under the
@@ -527,8 +530,67 @@
             });
         },
 
+        /* ───────── Anonymous funnel (drop-off) ───────── */
+
+        // A tiny fire-and-forget beacon carrying no personal data: which quiz,
+        // which question was reached, or that the quiz finished. Used only to
+        // build the Question performance report. sendBeacon keeps it off the
+        // critical path; a plain post is the fallback.
+        beacon: function (event, q) {
+            var payload = {
+                action: 'asq_track',
+                nonce: asqFrontend.nonce,
+                finder_id: this.finderId,
+                event: event,
+                q: q || 0
+            };
+            try {
+                if (navigator && typeof navigator.sendBeacon === 'function') {
+                    var fd = new FormData();
+                    for (var k in payload) {
+                        if (Object.prototype.hasOwnProperty.call(payload, k)) {
+                            fd.append(k, payload[k]);
+                        }
+                    }
+                    navigator.sendBeacon(asqFrontend.ajax_url, fd);
+                    return;
+                }
+            } catch (e) { /* fall through to $.post */ }
+            $.post(asqFrontend.ajax_url, payload);
+        },
+
+        // Count a question as reached at most once per session, so the funnel
+        // reads as "sessions that got at least this far".
+        trackReach: function (idx) {
+            idx = idx | 0;
+            if (!this._reached) { this._reached = {}; }
+            var key = 'asq_reach_' + this.finderId;
+            var seen = this._reached;
+            try {
+                var stored = window.sessionStorage.getItem(key);
+                if (stored) { seen = this._reached = JSON.parse(stored) || {}; }
+            } catch (e) { /* sessionStorage may be unavailable */ }
+            if (seen[idx]) { return; }
+            seen[idx] = 1;
+            try { window.sessionStorage.setItem(key, JSON.stringify(seen)); } catch (e) {}
+            this.beacon('reach', idx);
+        },
+
+        // Count the completion once per session.
+        trackComplete: function () {
+            if (this._completed) { return; }
+            this._completed = true;
+            var key = 'asq_done_' + this.finderId;
+            try {
+                if (window.sessionStorage.getItem(key)) { return; }
+                window.sessionStorage.setItem(key, '1');
+            } catch (e) {}
+            this.beacon('complete', 0);
+        },
+
         // Reached the end of the questions.
         finish: function () {
+            this.trackComplete();
             if (this.isGated()) {
                 // The medical gate replaces the normal path: no email gate,
                 // no reading. Don't leave the medical selections in the browser.

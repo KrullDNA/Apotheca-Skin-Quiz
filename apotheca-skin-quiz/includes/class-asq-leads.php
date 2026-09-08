@@ -322,6 +322,231 @@ class ASQ_Leads {
         do_action( 'asq_gate_fired', $finder_id );
     }
 
+    /* ────────── Funnel (anonymous drop-off counts, no PII) ────────── */
+
+    /**
+     * Record that an anonymous visitor reached a question, or completed the
+     * quiz. This is the data behind the Question performance screen: it never
+     * stores a person, only per-day counts of how many sessions reached each
+     * question index and how many finished.
+     *
+     * Each session increments a given question index at most once (the front
+     * end guards it), so reached[idx] reads directly as "sessions that got at
+     * least this far", and the gap to the next index is the drop-off.
+     *
+     * The counts live in one non-autoloaded option, pruned to the last ~400
+     * days so it can never grow without bound. Like the gate counter above,
+     * this is a lightweight aggregate: under heavy concurrency a rare
+     * increment may be lost, which is fine for a funnel read.
+     *
+     * @param int    $finder_id
+     * @param string $event 'reach' or 'complete'.
+     * @param int    $q     Question index (ignored for 'complete').
+     */
+    public static function record_progress( $finder_id, $event, $q = 0 ) {
+        $finder_id = absint( $finder_id );
+        if ( ! $finder_id ) {
+            return;
+        }
+
+        $funnel = get_option( 'asq_funnel', array() );
+        if ( ! is_array( $funnel ) ) {
+            $funnel = array();
+        }
+
+        $date = current_time( 'Y-m-d' );
+        if ( empty( $funnel[ $finder_id ] ) || ! is_array( $funnel[ $finder_id ] ) ) {
+            $funnel[ $finder_id ] = array();
+        }
+        if ( empty( $funnel[ $finder_id ][ $date ] ) || ! is_array( $funnel[ $finder_id ][ $date ] ) ) {
+            $funnel[ $finder_id ][ $date ] = array( 'r' => array(), 'c' => 0 );
+        }
+
+        if ( 'complete' === $event ) {
+            $funnel[ $finder_id ][ $date ]['c'] = (int) ( $funnel[ $finder_id ][ $date ]['c'] ?? 0 ) + 1;
+        } else {
+            $q = max( 0, (int) $q );
+            $funnel[ $finder_id ][ $date ]['r'][ $q ] = (int) ( $funnel[ $finder_id ][ $date ]['r'][ $q ] ?? 0 ) + 1;
+        }
+
+        update_option( 'asq_funnel', self::prune_funnel( $funnel ), false );
+    }
+
+    /** Drop day-buckets older than ~400 days across every quiz. */
+    protected static function prune_funnel( $funnel ) {
+        $cutoff = gmdate( 'Y-m-d', strtotime( current_time( 'Y-m-d' ) . ' -400 days' ) );
+        foreach ( $funnel as $fid => $dates ) {
+            if ( ! is_array( $dates ) ) {
+                unset( $funnel[ $fid ] );
+                continue;
+            }
+            foreach ( $dates as $d => $v ) {
+                if ( (string) $d < $cutoff ) {
+                    unset( $funnel[ $fid ][ $d ] );
+                }
+            }
+            if ( empty( $funnel[ $fid ] ) ) {
+                unset( $funnel[ $fid ] );
+            }
+        }
+        return $funnel;
+    }
+
+    /**
+     * Sum the funnel for a quiz (0 = all quizzes) since a date (empty = all
+     * time).
+     *
+     * @return array [ 'reached' => [ idx => count ], 'completed' => int ]
+     */
+    public static function funnel_totals( $finder_id = 0, $since_date = '' ) {
+        $funnel = get_option( 'asq_funnel', array() );
+        if ( ! is_array( $funnel ) ) {
+            $funnel = array();
+        }
+
+        $finder_id = absint( $finder_id );
+        $reached   = array();
+        $completed = 0;
+
+        foreach ( $funnel as $fid => $dates ) {
+            if ( $finder_id && (int) $fid !== $finder_id ) {
+                continue;
+            }
+            if ( ! is_array( $dates ) ) {
+                continue;
+            }
+            foreach ( $dates as $d => $v ) {
+                if ( $since_date && (string) $d < $since_date ) {
+                    continue;
+                }
+                if ( ! empty( $v['r'] ) && is_array( $v['r'] ) ) {
+                    foreach ( $v['r'] as $idx => $n ) {
+                        $idx             = (int) $idx;
+                        $reached[ $idx ] = ( $reached[ $idx ] ?? 0 ) + (int) $n;
+                    }
+                }
+                $completed += (int) ( $v['c'] ?? 0 );
+            }
+        }
+
+        ksort( $reached );
+        return array( 'reached' => $reached, 'completed' => $completed );
+    }
+
+    /* ────────── Deletion (cascades, no orphan rows) ────────── */
+
+    /**
+     * All lead ids for an email (normally one, but defensive against dupes).
+     */
+    public static function get_lead_ids_by_email( $email ) {
+        global $wpdb;
+        $email = sanitize_email( $email );
+        if ( ! $email ) {
+            return array();
+        }
+        return array_map( 'intval', (array) $wpdb->get_col( $wpdb->prepare(
+            'SELECT id FROM ' . self::leads_table() . ' WHERE email = %s', // phpcs:ignore WordPress.DB.PreparedSQL
+            $email
+        ) ) );
+    }
+
+    /**
+     * Every submission joined to a lead, oldest first.
+     */
+    public static function get_submissions_for_lead( $lead_id ) {
+        global $wpdb;
+        $lead_id = absint( $lead_id );
+        if ( ! $lead_id ) {
+            return array();
+        }
+        return $wpdb->get_results( $wpdb->prepare(
+            'SELECT * FROM ' . self::submissions_table() . ' WHERE lead_id = %d ORDER BY created_at ASC, id ASC', // phpcs:ignore WordPress.DB.PreparedSQL
+            $lead_id
+        ), ARRAY_A );
+    }
+
+    /**
+     * Delete a lead and every quiz response joined to it, in one operation.
+     * The responses go first, then the person, so nothing is left orphaned.
+     *
+     * @return int Total rows removed (responses + the lead).
+     */
+    public static function delete_lead( $lead_id ) {
+        global $wpdb;
+        $lead_id = absint( $lead_id );
+        if ( ! $lead_id ) {
+            return 0;
+        }
+        $removed  = (int) $wpdb->delete( self::submissions_table(), array( 'lead_id' => $lead_id ), array( '%d' ) );
+        $removed += (int) $wpdb->delete( self::leads_table(), array( 'id' => $lead_id ), array( '%d' ) );
+
+        /**
+         * Fires after a lead and all their responses are deleted.
+         *
+         * @param int $lead_id
+         */
+        do_action( 'asq_lead_deleted', $lead_id );
+
+        return $removed;
+    }
+
+    /**
+     * Delete every lead for an email plus all their responses. Also sweeps any
+     * response rows recorded under that email with no surviving lead.
+     *
+     * @return int Total rows removed.
+     */
+    public static function delete_by_email( $email ) {
+        global $wpdb;
+        $email = sanitize_email( $email );
+        if ( ! $email ) {
+            return 0;
+        }
+
+        $removed = 0;
+        foreach ( self::get_lead_ids_by_email( $email ) as $lead_id ) {
+            $removed += self::delete_lead( $lead_id );
+        }
+
+        // Belt and braces: clear any response stored under this email whose
+        // lead has already gone, so no orphan rows survive.
+        $removed += (int) $wpdb->delete( self::submissions_table(), array( 'email' => $email ), array( '%s' ) );
+
+        return $removed;
+    }
+
+    /**
+     * Delete a single response. If it was the lead's last one, the now-orphaned
+     * person row is removed too, so a per-response delete never leaves an
+     * empty lead behind.
+     */
+    public static function delete_submission( $submission_id ) {
+        global $wpdb;
+        $submission_id = absint( $submission_id );
+        if ( ! $submission_id ) {
+            return false;
+        }
+
+        $lead_id = (int) $wpdb->get_var( $wpdb->prepare(
+            'SELECT lead_id FROM ' . self::submissions_table() . ' WHERE id = %d', // phpcs:ignore WordPress.DB.PreparedSQL
+            $submission_id
+        ) );
+
+        $wpdb->delete( self::submissions_table(), array( 'id' => $submission_id ), array( '%d' ) );
+
+        if ( $lead_id ) {
+            $remaining = (int) $wpdb->get_var( $wpdb->prepare(
+                'SELECT COUNT(*) FROM ' . self::submissions_table() . ' WHERE lead_id = %d', // phpcs:ignore WordPress.DB.PreparedSQL
+                $lead_id
+            ) );
+            if ( ! $remaining ) {
+                $wpdb->delete( self::leads_table(), array( 'id' => $lead_id ), array( '%d' ) );
+            }
+        }
+
+        return true;
+    }
+
     /* ────────── Text helpers ────────── */
 
     public static function answers_to_text( $answers_json ) {
@@ -357,35 +582,81 @@ class ASQ_Leads {
     public function register_menu() {
         add_submenu_page(
             'edit.php?post_type=apotheca_skin_quiz',
-            __( 'Submissions', 'apotheca-skin-quiz' ),
-            __( 'Submissions', 'apotheca-skin-quiz' ),
+            __( 'Responses', 'apotheca-skin-quiz' ),
+            __( 'Responses', 'apotheca-skin-quiz' ),
             self::capability(),
             'asq-submissions',
             array( $this, 'render_page' )
         );
     }
 
+    /**
+     * The active filters, read from the query string and sanitised. Shared by
+     * the Responses screen and the CSV export so both see the same rows.
+     */
+    protected static function responses_filters() {
+        return array(
+            'finder'  => absint( $_GET['finder'] ?? 0 ),
+            'finding' => isset( $_GET['finding'] ) ? sanitize_text_field( wp_unslash( $_GET['finding'] ) ) : '',
+            'from'    => isset( $_GET['from'] ) ? sanitize_text_field( wp_unslash( $_GET['from'] ) ) : '',
+            'to'      => isset( $_GET['to'] ) ? sanitize_text_field( wp_unslash( $_GET['to'] ) ) : '',
+            's'       => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
+        );
+    }
+
+    /**
+     * Build the WHERE clause for the responses list from the filters:
+     * quiz, finding fired, date range and email search.
+     */
+    protected static function responses_where( $args ) {
+        global $wpdb;
+        $clauses = array();
+
+        if ( ! empty( $args['finder'] ) ) {
+            $clauses[] = $wpdb->prepare( 'finder_id = %d', absint( $args['finder'] ) );
+        }
+        if ( ! empty( $args['finding'] ) && preg_match( '/^F\d{1,2}$/', $args['finding'] ) ) {
+            // Findings are stored as JSON like {"id":"F3","label":"…"}; the
+            // closing quote in the pattern keeps F1 from matching F10.
+            $clauses[] = $wpdb->prepare(
+                'findings LIKE %s',
+                '%' . $wpdb->esc_like( '"id":"' . $args['finding'] . '"' ) . '%'
+            );
+        }
+        if ( ! empty( $args['from'] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $args['from'] ) ) {
+            $clauses[] = $wpdb->prepare( 'created_at >= %s', $args['from'] . ' 00:00:00' );
+        }
+        if ( ! empty( $args['to'] ) && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $args['to'] ) ) {
+            $clauses[] = $wpdb->prepare( 'created_at <= %s', $args['to'] . ' 23:59:59' );
+        }
+        if ( '' !== $args['s'] ) {
+            $clauses[] = $wpdb->prepare( 'email LIKE %s', '%' . $wpdb->esc_like( $args['s'] ) . '%' );
+        }
+
+        return $clauses ? ( 'WHERE ' . implode( ' AND ', $clauses ) ) : '';
+    }
+
     public function render_page() {
         if ( ! current_user_can( self::capability() ) ) {
-            wp_die( esc_html__( 'You do not have permission to view submissions.', 'apotheca-skin-quiz' ) );
+            wp_die( esc_html__( 'You do not have permission to view responses.', 'apotheca-skin-quiz' ) );
         }
 
         global $wpdb;
         $subs = self::submissions_table();
 
-        // Single-row delete.
+        // Single-row delete (cascades to remove an orphaned lead).
         if ( isset( $_GET['asq_action'], $_GET['sub'] ) && 'delete' === $_GET['asq_action'] ) {
             $sub_id = absint( $_GET['sub'] );
             check_admin_referer( 'asq_delete_sub_' . $sub_id );
-            $wpdb->delete( $subs, array( 'id' => $sub_id ), array( '%d' ) );
-            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Submission deleted.', 'apotheca-skin-quiz' ) . '</p></div>';
+            self::delete_submission( $sub_id );
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Response deleted.', 'apotheca-skin-quiz' ) . '</p></div>';
         }
 
-        $finder_filter = absint( $_GET['finder'] ?? 0 );
-        $paged         = max( 1, absint( $_GET['paged'] ?? 1 ) );
-        $offset        = ( $paged - 1 ) * self::PER_PAGE;
+        $filters = self::responses_filters();
+        $paged   = max( 1, absint( $_GET['paged'] ?? 1 ) );
+        $offset  = ( $paged - 1 ) * self::PER_PAGE;
 
-        $where = $finder_filter ? $wpdb->prepare( 'WHERE finder_id = %d', $finder_filter ) : '';
+        $where = self::responses_where( $filters );
         $total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$subs} {$where}" ); // phpcs:ignore WordPress.DB.PreparedSQL
         $rows  = $wpdb->get_results( $wpdb->prepare(
             "SELECT * FROM {$subs} {$where} ORDER BY created_at DESC, id DESC LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL
@@ -401,45 +672,86 @@ class ASQ_Leads {
             'order'          => 'ASC',
         ) );
 
-        $export_url = wp_nonce_url( add_query_arg( array(
-            'action' => 'asq_export_leads',
-            'finder' => $finder_filter,
+        $findings_map = ASQ_Config::findings();
+
+        // Filters carried through export, pagination and delete links.
+        $carry = array(
+            'finder'  => $filters['finder'] ?: false,
+            'finding' => $filters['finding'] ?: false,
+            'from'    => $filters['from'] ?: false,
+            'to'      => $filters['to'] ?: false,
+            's'       => '' !== $filters['s'] ? $filters['s'] : false,
+        );
+
+        $export_url = wp_nonce_url( add_query_arg( array_merge(
+            array( 'action' => 'asq_export_leads' ),
+            $carry
         ), admin_url( 'admin-post.php' ) ), 'asq_export_leads' );
 
-        $base_url = add_query_arg( array(
+        $base_url = add_query_arg( array_merge( array(
             'post_type' => 'apotheca_skin_quiz',
             'page'      => 'asq-submissions',
-            'finder'    => $finder_filter ?: false,
-        ), admin_url( 'edit.php' ) );
+        ), $carry ), admin_url( 'edit.php' ) );
 
         $total_pages = max( 1, (int) ceil( $total / self::PER_PAGE ) );
         ?>
         <div class="wrap">
-            <h1 class="wp-heading-inline"><?php esc_html_e( 'Apotheca Skin Quiz Submissions', 'apotheca-skin-quiz' ); ?></h1>
+            <h1 class="wp-heading-inline"><?php esc_html_e( 'Apotheca Skin Quiz Responses', 'apotheca-skin-quiz' ); ?></h1>
             <?php if ( $total ) : ?>
                 <a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action"><?php esc_html_e( 'Export CSV', 'apotheca-skin-quiz' ); ?></a>
             <?php endif; ?>
             <hr class="wp-header-end">
 
-            <form method="get" style="margin:12px 0;">
+            <form method="get" style="margin:12px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
                 <input type="hidden" name="post_type" value="apotheca_skin_quiz">
                 <input type="hidden" name="page" value="asq-submissions">
-                <select name="finder">
-                    <option value="0"><?php esc_html_e( 'All quizzes', 'apotheca-skin-quiz' ); ?></option>
-                    <?php foreach ( $finders as $finder ) : ?>
-                        <option value="<?php echo esc_attr( $finder->ID ); ?>" <?php selected( $finder_filter, $finder->ID ); ?>>
-                            <?php echo esc_html( $finder->post_title ?: __( '(no title)', 'apotheca-skin-quiz' ) ); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-                <button type="submit" class="button"><?php esc_html_e( 'Filter', 'apotheca-skin-quiz' ); ?></button>
-                <span style="margin-left:8px;color:#646970;">
-                    <?php printf( esc_html( _n( '%s submission', '%s submissions', $total, 'apotheca-skin-quiz' ) ), esc_html( number_format_i18n( $total ) ) ); ?>
+                <label>
+                    <span style="display:block;font-size:12px;color:#646970;"><?php esc_html_e( 'Quiz', 'apotheca-skin-quiz' ); ?></span>
+                    <select name="finder">
+                        <option value="0"><?php esc_html_e( 'All quizzes', 'apotheca-skin-quiz' ); ?></option>
+                        <?php foreach ( $finders as $finder ) : ?>
+                            <option value="<?php echo esc_attr( $finder->ID ); ?>" <?php selected( $filters['finder'], $finder->ID ); ?>>
+                                <?php echo esc_html( $finder->post_title ?: __( '(no title)', 'apotheca-skin-quiz' ) ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>
+                    <span style="display:block;font-size:12px;color:#646970;"><?php esc_html_e( 'Finding', 'apotheca-skin-quiz' ); ?></span>
+                    <select name="finding">
+                        <option value=""><?php esc_html_e( 'Any finding', 'apotheca-skin-quiz' ); ?></option>
+                        <?php foreach ( $findings_map as $fid => $flabel ) : ?>
+                            <?php if ( 'F11' === $fid ) { continue; } // gate is never a stored response ?>
+                            <option value="<?php echo esc_attr( $fid ); ?>" <?php selected( $filters['finding'], $fid ); ?>>
+                                <?php echo esc_html( $fid . ' — ' . $flabel ); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+                <label>
+                    <span style="display:block;font-size:12px;color:#646970;"><?php esc_html_e( 'From', 'apotheca-skin-quiz' ); ?></span>
+                    <input type="date" name="from" value="<?php echo esc_attr( $filters['from'] ); ?>">
+                </label>
+                <label>
+                    <span style="display:block;font-size:12px;color:#646970;"><?php esc_html_e( 'To', 'apotheca-skin-quiz' ); ?></span>
+                    <input type="date" name="to" value="<?php echo esc_attr( $filters['to'] ); ?>">
+                </label>
+                <label>
+                    <span style="display:block;font-size:12px;color:#646970;"><?php esc_html_e( 'Email', 'apotheca-skin-quiz' ); ?></span>
+                    <input type="search" name="s" value="<?php echo esc_attr( $filters['s'] ); ?>" placeholder="<?php esc_attr_e( 'name@example.com', 'apotheca-skin-quiz' ); ?>">
+                </label>
+                <span>
+                    <button type="submit" class="button"><?php esc_html_e( 'Filter', 'apotheca-skin-quiz' ); ?></button>
+                    <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=apotheca_skin_quiz&page=asq-submissions' ) ); ?>" class="button-link" style="margin-left:6px;"><?php esc_html_e( 'Reset', 'apotheca-skin-quiz' ); ?></a>
                 </span>
             </form>
 
+            <p style="color:#646970;margin:0 0 8px;">
+                <?php printf( esc_html( _n( '%s response', '%s responses', $total, 'apotheca-skin-quiz' ) ), esc_html( number_format_i18n( $total ) ) ); ?>
+            </p>
+
             <?php if ( ! $rows ) : ?>
-                <p><?php esc_html_e( 'No submissions yet. When a visitor completes the quiz and enters their email, it will appear here.', 'apotheca-skin-quiz' ); ?></p>
+                <p><?php esc_html_e( 'No responses match. When a visitor completes the quiz and enters their email, it will appear here.', 'apotheca-skin-quiz' ); ?></p>
             <?php else : ?>
                 <table class="widefat striped">
                     <thead>
@@ -511,10 +823,10 @@ class ASQ_Leads {
         check_admin_referer( 'asq_export_leads' );
 
         global $wpdb;
-        $subs          = self::submissions_table();
-        $finder_filter = absint( $_GET['finder'] ?? 0 );
-        $where         = $finder_filter ? $wpdb->prepare( 'WHERE finder_id = %d', $finder_filter ) : '';
-        $rows          = $wpdb->get_results( "SELECT * FROM {$subs} {$where} ORDER BY created_at DESC, id DESC" ); // phpcs:ignore WordPress.DB.PreparedSQL
+        $subs    = self::submissions_table();
+        $filters = self::responses_filters();
+        $where   = self::responses_where( $filters );
+        $rows    = $wpdb->get_results( "SELECT * FROM {$subs} {$where} ORDER BY created_at DESC, id DESC" ); // phpcs:ignore WordPress.DB.PreparedSQL
 
         $filename = 'apotheca-skin-quiz-submissions-' . gmdate( 'Y-m-d' ) . '.csv';
 

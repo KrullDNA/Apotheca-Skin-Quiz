@@ -25,6 +25,29 @@ class ASQ_Ajax {
         // Frontend: record only that the medical gate fired (no PII, no option).
         add_action( 'wp_ajax_asq_record_gate', array( $this, 'record_gate' ) );
         add_action( 'wp_ajax_nopriv_asq_record_gate', array( $this, 'record_gate' ) );
+
+        // Frontend: anonymous funnel beacon (reached a question / completed).
+        add_action( 'wp_ajax_asq_track', array( $this, 'track' ) );
+        add_action( 'wp_ajax_nopriv_asq_track', array( $this, 'track' ) );
+    }
+
+    /**
+     * Anonymous drop-off beacon. Records only a per-day count for a quiz: which
+     * question index was reached, or that the quiz was completed. No personal
+     * data, no answers. Fire-and-forget, so the response is deliberately tiny.
+     */
+    public function track() {
+        check_ajax_referer( 'asq_frontend_nonce', 'nonce' );
+
+        $finder_id = absint( $_POST['finder_id'] ?? 0 );
+        $event     = ( isset( $_POST['event'] ) && 'complete' === $_POST['event'] ) ? 'complete' : 'reach';
+        $q         = absint( $_POST['q'] ?? 0 );
+
+        if ( $finder_id ) {
+            ASQ_Leads::record_progress( $finder_id, $event, $q );
+        }
+
+        wp_send_json_success();
     }
 
     /**
