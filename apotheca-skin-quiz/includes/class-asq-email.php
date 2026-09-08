@@ -124,9 +124,8 @@ class ASQ_Email {
         }
 
         // Resolve the answers into readable question/answer text.
-        $answers          = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
-        $followup_answers = json_decode( stripslashes( $_POST['followup_answers'] ?? '{}' ), true );
-        $readable         = ASQ_Leads::resolve_answers( $finder_id, (array) $answers, (array) $followup_answers );
+        $answers  = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );
+        $readable = ASQ_Config::resolve_answers( (array) $answers );
 
         $email_styles = $this->get_email_styles( $finder_id );
         $finder_title = get_the_title( $finder_id );

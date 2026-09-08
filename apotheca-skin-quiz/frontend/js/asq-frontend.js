@@ -26,6 +26,7 @@
         this.followupAnswers = {};  // { "qi_ai": [followupAnswerIndices] }
         this.history    = [];  // navigation stack: [{ type:'question', qi:N }, { type:'followup', qi:N, ai:M }, ...]
         this.totalQ     = this.questions.length;
+        this.view       = 'question';  // which screen is showing: question | followup | email
 
         this.$progress      = $el.find('.asq-progress-fill');
         this.$progressText  = $el.find('.asq-progress-text');
@@ -47,6 +48,11 @@
             // If a results token is present in the URL, skip straight to results.
             if (asqFrontend.results_token) {
                 this.loadSessionResults(asqFrontend.results_token);
+                return;
+            }
+
+            // Resume where she left off if a refresh interrupted the quiz.
+            if (this.restoreState()) {
                 return;
             }
 
@@ -136,6 +142,7 @@
         renderQuestion: function (idx) {
             var q = this.questions[idx];
             if (!q) return;
+            this.view = 'question';
 
             // When auto-advancing from a single-select tap, suppress pointer
             // events on the incoming answers so the browser cannot apply a
@@ -229,6 +236,7 @@
         renderFollowupQuestion: function (qi, ai) {
             var fu = this.questions[qi].answers[ai].follow_up;
             if (!fu) return;
+            this.view = 'followup';
 
             var suppress = this._suppressTouch;
             this._suppressTouch = false;
@@ -334,6 +342,7 @@
                     } else {
                         $btn.addClass('asq-btn-disabled').prop('disabled', true);
                     }
+                    this.persistState();
                 } else {
                     this.$container.find('.asq-answer-option').removeClass('asq-selected');
                     $opt.addClass('asq-selected');
@@ -368,6 +377,7 @@
                     } else {
                         $btn.addClass('asq-btn-disabled').prop('disabled', true);
                     }
+                    this.persistState();
                 } else {
                     this.$container.find('.asq-answer-option').removeClass('asq-selected');
                     $opt.addClass('asq-selected');
@@ -480,11 +490,14 @@
             var pct = Math.round((this.current / this.totalQ) * 100);
             this.$progress.css('width', pct + '%');
             this.$progressText.text(pct + '%');
+            // Persist progress so a refresh resumes at the same screen.
+            this.persistState();
         },
 
         /* ───────── Email screen ───────── */
 
         showEmail: function () {
+            this.view = 'email';
             this.updateProgress();
             this.$container.hide();
             this.$emailScreen.fadeIn(300);
@@ -534,6 +547,8 @@
                     followup_answers: JSON.stringify(self.followupAnswers)
                 }, function (res) {
                     if (res.success) {
+                        // Quiz is done; clear the saved progress before leaving.
+                        self.clearState();
                         window.location.href = resultsUrl;
                     } else {
                         $msg.text(res.data && res.data.message ? res.data.message : asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
@@ -634,7 +649,7 @@
             this.$loadingScreen.hide();
             this._cachedResults = data;
 
-            this.renderAnswers(data.answers || []);
+            this.renderFindings(data.findings || []);
 
             // Reveal the results screen and announce it to screen readers.
             this.$resultsScreen.attr('aria-live', 'polite');
@@ -643,22 +658,21 @@
         },
 
         /**
-         * Placeholder result: render the raw answer set so the whole flow can
-         * be tested end to end before the findings engine is built.
+         * Placeholder result: render the findings the answers map to. The real
+         * written reading arrives with the findings engine in a later stage.
          */
-        renderAnswers: function (answers) {
-            var html = '<div class="asq-answers-readout">';
-            if (answers && answers.length) {
-                for (var i = 0; i < answers.length; i++) {
-                    var row = answers[i] || {};
-                    var ans = (row.answers || []).join(', ');
-                    html += '<div class="asq-answer-readout-row">';
-                    html += '<div class="asq-answer-readout-q">' + this.escHtml(row.question || '') + '</div>';
-                    html += '<div class="asq-answer-readout-a">' + this.escHtml(ans) + '</div>';
+        renderFindings: function (findings) {
+            var html = '<div class="asq-findings-readout">';
+            if (findings && findings.length) {
+                for (var i = 0; i < findings.length; i++) {
+                    var f = findings[i] || {};
+                    html += '<div class="asq-finding-readout-row">';
+                    html += '<span class="asq-finding-readout-id">' + this.escHtml(f.id || '') + '</span>';
+                    html += '<span class="asq-finding-readout-label">' + this.escHtml(f.label || '') + '</span>';
                     html += '</div>';
                 }
             } else {
-                html += '<p>' + this.escHtml('No answers were recorded.') + '</p>';
+                html += '<p>' + this.escHtml('No findings mapped to your answers yet.') + '</p>';
             }
             html += '</div>';
             this.$resultsScreen.find('.asq-results-container').html(html);
@@ -667,6 +681,7 @@
         /* ───────── Start over ───────── */
 
         startOver: function () {
+            this.clearState();
             this.current = 0;
             this.answers = {};
             this.followupAnswers = {};
@@ -694,6 +709,62 @@
             this.$container.show();
             this.renderQuestion(0);
             this.updateProgress();
+        },
+
+        /* ───────── Session persistence ───────── */
+
+        stateKey: function () {
+            return 'asq_state_' + this.finderId;
+        },
+
+        // Save answers, position and current screen so a page refresh does not
+        // lose her progress. Stored per quiz, for this browser tab only.
+        persistState: function () {
+            try {
+                sessionStorage.setItem(this.stateKey(), JSON.stringify({
+                    answers: this.answers,
+                    followupAnswers: this.followupAnswers,
+                    history: this.history,
+                    current: this.current,
+                    view: this.view
+                }));
+            } catch (e) {}
+        },
+
+        // Rebuild the quiz from saved progress. Returns true if it restored.
+        restoreState: function () {
+            var s;
+            try {
+                var raw = sessionStorage.getItem(this.stateKey());
+                if (!raw) return false;
+                s = JSON.parse(raw);
+            } catch (e) { return false; }
+
+            if (!s || !s.history || !s.history.length) return false;
+
+            this.answers         = s.answers || {};
+            this.followupAnswers = s.followupAnswers || {};
+            this.history         = s.history;
+            this.current         = typeof s.current === 'number' ? s.current : 0;
+            this.view            = s.view || 'question';
+
+            var top = this.history[this.history.length - 1];
+            if (this.view === 'email') {
+                this.$container.show();
+                this.showEmail();
+            } else if (top && top.type === 'followup') {
+                this.renderFollowupQuestion(top.qi, top.ai);
+                this.updateProgress();
+            } else {
+                this.current = (top && typeof top.qi === 'number') ? top.qi : this.current;
+                this.renderQuestion(this.current);
+                this.updateProgress();
+            }
+            return true;
+        },
+
+        clearState: function () {
+            try { sessionStorage.removeItem(this.stateKey()); } catch (e) {}
         },
 
         /* ───────── Utilities ───────── */

@@ -127,7 +127,7 @@ class ASQ_Admin {
     public function add_meta_boxes() {
         add_meta_box(
             'asq_questions',
-            __( 'Questions & Answers', 'apotheca-skin-quiz' ),
+            __( 'Quiz Questions', 'apotheca-skin-quiz' ),
             array( $this, 'render_questions_box' ),
             'apotheca_skin_quiz',
             'normal',
@@ -392,220 +392,51 @@ class ASQ_Admin {
 
     /* ─── Questions box ─── */
 
+    /**
+     * The ten questions are defined in code (includes/asq-quiz-config.php) and
+     * shared across every quiz, so this box is a read-only reference showing
+     * the questions, their options and the findings each option feeds.
+     */
     public function render_questions_box( $post ) {
-        $questions = get_post_meta( $post->ID, '_asq_questions', true );
-        if ( ! is_array( $questions ) ) {
-            $questions = array();
-        }
+        $questions = ASQ_Config::questions();
+        $findings  = ASQ_Config::findings();
         ?>
-        <div id="asq-questions-wrap">
-            <div id="asq-questions-list" class="asq-sortable">
-                <?php
-                foreach ( $questions as $qi => $question ) {
-                    $this->render_question_template( $qi, $question );
-                }
-                ?>
-            </div>
-            <p><button type="button" class="button button-primary" id="asq-add-question"><?php esc_html_e( '+ Add Question', 'apotheca-skin-quiz' ); ?></button></p>
-        </div>
-
-        <!-- Hidden template for new question -->
-        <script type="text/html" id="tmpl-asq-question">
-            <?php $this->render_question_template( '{{data.qi}}', array() ); ?>
-        </script>
-
-        <!-- Hidden template for new answer -->
-        <script type="text/html" id="tmpl-asq-answer">
-            <?php $this->render_answer_template( '{{data.qi}}', '{{data.ai}}', array() ); ?>
-        </script>
-
-        <!-- Hidden template for follow-up answer -->
-        <script type="text/html" id="tmpl-asq-followup-answer">
-            <?php $this->render_followup_answer_template( '{{data.qi}}', '{{data.ai}}', '{{data.fai}}', array() ); ?>
-        </script>
-
-        <?php
-    }
-
-    /* ─── Render helpers ─── */
-
-    private function render_question_template( $qi, $question ) {
-        $question = wp_parse_args( $question, array(
-            'text'        => '',
-            'instruction' => '',
-            'multiple'    => 0,
-            'answers'     => array(),
-        ) );
-        $name_prefix = "asq_questions[{$qi}]";
-        ?>
-        <div class="asq-question" data-qi="<?php echo esc_attr( $qi ); ?>">
-            <div class="asq-question-header asq-drag-handle">
-                <span class="asq-drag-icon dashicons dashicons-menu"></span>
-                <span class="asq-question-title"><?php echo $question['text'] ? esc_html( $question['text'] ) : esc_html__( 'New Question', 'apotheca-skin-quiz' ); ?></span>
-                <span class="asq-question-toggle dashicons dashicons-arrow-down-alt2"></span>
-                <button type="button" class="asq-remove-question button-link" title="<?php esc_attr_e( 'Delete Question', 'apotheca-skin-quiz' ); ?>"><span class="dashicons dashicons-trash"></span></button>
-            </div>
-            <div class="asq-question-body">
-                <p>
-                    <label><strong><?php esc_html_e( 'Question Text', 'apotheca-skin-quiz' ); ?></strong></label><br>
-                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[text]" value="<?php echo esc_attr( $question['text'] ); ?>" class="widefat asq-question-text-input">
-                </p>
-                <p>
-                    <label><strong><?php esc_html_e( 'Instruction Text', 'apotheca-skin-quiz' ); ?></strong></label><br>
-                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[instruction]" value="<?php echo esc_attr( $question['instruction'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'e.g. Select all that apply, Choose your favourite…', 'apotheca-skin-quiz' ); ?>">
-                    <span class="description"><?php esc_html_e( 'Shown below the question on the frontend. Leave blank to use the automatic hint.', 'apotheca-skin-quiz' ); ?></span>
-                </p>
-                <p>
-                    <label>
-                        <input type="checkbox" name="<?php echo esc_attr( $name_prefix ); ?>[multiple]" value="1" <?php checked( $question['multiple'], 1 ); ?>>
-                        <?php esc_html_e( 'Allow multiple answers (checkboxes)', 'apotheca-skin-quiz' ); ?>
-                    </label>
-                </p>
-                <div class="asq-answers-wrap">
-                    <h4><?php esc_html_e( 'Answers', 'apotheca-skin-quiz' ); ?></h4>
-                    <div class="asq-answers-list asq-sortable-answers">
-                        <?php
-                        if ( ! empty( $question['answers'] ) ) {
-                            foreach ( $question['answers'] as $ai => $answer ) {
-                                $this->render_answer_template( $qi, $ai, $answer );
-                            }
-                        }
-                        ?>
-                    </div>
-                    <p><button type="button" class="button asq-add-answer"><?php esc_html_e( '+ Add Answer', 'apotheca-skin-quiz' ); ?></button></p>
-                </div>
-            </div>
-        </div>
-        <?php
-    }
-
-    private function render_answer_template( $qi, $ai, $answer ) {
-        $answer = wp_parse_args( $answer, array(
-            'text'        => '',
-            'description' => '',
-            'image_id'    => '',
-            'products'    => array(),
-            'follow_up'   => array(),
-        ) );
-        $name_prefix = "asq_questions[{$qi}][answers][{$ai}]";
-        $thumb_url   = $answer['image_id'] ? wp_get_attachment_image_url( $answer['image_id'], 'thumbnail' ) : '';
-        $has_followup = ! empty( $answer['follow_up']['text'] ) || ! empty( $answer['follow_up']['answers'] );
-        $fu_prefix    = $name_prefix . '[follow_up]';
-        $fu           = wp_parse_args( (array) ( $answer['follow_up'] ?? array() ), array(
-            'text'        => '',
-            'instruction' => '',
-            'multiple'    => 0,
-            'answers'     => array(),
-        ) );
-        ?>
-        <div class="asq-answer" data-ai="<?php echo esc_attr( $ai ); ?>">
-            <div class="asq-answer-header asq-drag-handle-answer">
-                <span class="asq-drag-icon dashicons dashicons-menu"></span>
-                <span class="asq-answer-label"><?php echo $answer['text'] ? esc_html( $answer['text'] ) : esc_html__( 'New Answer', 'apotheca-skin-quiz' ); ?></span>
-                <button type="button" class="asq-remove-answer button-link" title="<?php esc_attr_e( 'Delete Answer', 'apotheca-skin-quiz' ); ?>"><span class="dashicons dashicons-trash"></span></button>
-            </div>
-            <div class="asq-answer-body">
-                <!-- Answer text -->
-                <p>
-                    <label><?php esc_html_e( 'Answer Text', 'apotheca-skin-quiz' ); ?></label><br>
-                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[text]" value="<?php echo esc_attr( $answer['text'] ); ?>" class="widefat asq-answer-text-input">
-                </p>
-                <!-- Description (shown under answer text on image layout) -->
-                <p>
-                    <label><?php esc_html_e( 'Description', 'apotheca-skin-quiz' ); ?></label><br>
-                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[description]" value="<?php echo esc_attr( $answer['description'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Optional – displayed below the answer text on image layout', 'apotheca-skin-quiz' ); ?>">
-                </p>
-                <!-- Image -->
-                <div class="asq-answer-image-wrap">
-                    <label><?php esc_html_e( 'Image', 'apotheca-skin-quiz' ); ?></label><br>
-                    <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[image_id]" value="<?php echo esc_attr( $answer['image_id'] ); ?>" class="asq-image-id">
-                    <div class="asq-image-preview" <?php echo $thumb_url ? '' : 'style="display:none;"'; ?>>
-                        <img src="<?php echo esc_url( $thumb_url ); ?>" alt="">
-                        <button type="button" class="asq-remove-image button-link" title="<?php esc_attr_e( 'Remove Image', 'apotheca-skin-quiz' ); ?>"><span class="dashicons dashicons-no-alt"></span> <?php esc_html_e( 'Remove', 'apotheca-skin-quiz' ); ?></button>
-                    </div>
-                    <button type="button" class="button asq-select-image"><?php esc_html_e( 'Select Image', 'apotheca-skin-quiz' ); ?></button>
-                </div>
-                <!-- Follow-up question -->
-                <div class="asq-followup-wrap" <?php echo $has_followup ? '' : 'style="display:none;"'; ?>>
-                    <div class="asq-followup-header">
-                        <span class="dashicons dashicons-admin-comments"></span>
-                        <strong><?php esc_html_e( 'Follow-up Question', 'apotheca-skin-quiz' ); ?></strong>
-                        <button type="button" class="asq-remove-followup button-link" title="<?php esc_attr_e( 'Remove Follow-up', 'apotheca-skin-quiz' ); ?>"><span class="dashicons dashicons-no-alt"></span></button>
-                    </div>
-                    <div class="asq-followup-body">
-                        <p>
-                            <label><?php esc_html_e( 'Follow-up Question Text', 'apotheca-skin-quiz' ); ?></label><br>
-                            <input type="text" name="<?php echo esc_attr( $fu_prefix ); ?>[text]" value="<?php echo esc_attr( $fu['text'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'e.g. What shade of brunette?', 'apotheca-skin-quiz' ); ?>">
-                        </p>
-                        <p>
-                            <label><?php esc_html_e( 'Instruction', 'apotheca-skin-quiz' ); ?></label><br>
-                            <input type="text" name="<?php echo esc_attr( $fu_prefix ); ?>[instruction]" value="<?php echo esc_attr( $fu['instruction'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Optional', 'apotheca-skin-quiz' ); ?>">
-                        </p>
-                        <p>
-                            <label>
-                                <input type="checkbox" name="<?php echo esc_attr( $fu_prefix ); ?>[multiple]" value="1" <?php checked( $fu['multiple'], 1 ); ?>>
-                                <?php esc_html_e( 'Allow multiple answers', 'apotheca-skin-quiz' ); ?>
-                            </label>
-                        </p>
-                        <div class="asq-followup-answers">
-                            <h4><?php esc_html_e( 'Follow-up Answers', 'apotheca-skin-quiz' ); ?></h4>
-                            <div class="asq-followup-answers-list">
-                                <?php
-                                if ( ! empty( $fu['answers'] ) ) {
-                                    foreach ( $fu['answers'] as $fai => $fa ) {
-                                        $this->render_followup_answer_template( $qi, $ai, $fai, $fa );
-                                    }
-                                }
-                                ?>
-                            </div>
-                            <p><button type="button" class="button asq-add-followup-answer"><?php esc_html_e( '+ Add Follow-up Answer', 'apotheca-skin-quiz' ); ?></button></p>
-                        </div>
-                    </div>
-                </div>
-                <div class="asq-followup-add" <?php echo $has_followup ? 'style="display:none;"' : ''; ?>>
-                    <button type="button" class="button asq-add-followup"><span class="dashicons dashicons-admin-comments"></span> <?php esc_html_e( 'Add Follow-up Question', 'apotheca-skin-quiz' ); ?></button>
-                    <span class="description"><?php esc_html_e( 'Show an extra question when this answer is selected', 'apotheca-skin-quiz' ); ?></span>
-                </div>
-            </div>
-        </div>
-        <?php
-    }
-
-    private function render_followup_answer_template( $qi, $ai, $fai, $fa ) {
-        $fa = wp_parse_args( $fa, array(
-            'text'        => '',
-            'description' => '',
-            'image_id'    => '',
-            'products'    => array(),
-        ) );
-        $name_prefix = "asq_questions[{$qi}][answers][{$ai}][follow_up][answers][{$fai}]";
-        $thumb_url   = $fa['image_id'] ? wp_get_attachment_image_url( $fa['image_id'], 'thumbnail' ) : '';
-        ?>
-        <div class="asq-followup-answer" data-fai="<?php echo esc_attr( $fai ); ?>">
-            <div class="asq-followup-answer-header">
-                <span class="asq-followup-answer-label"><?php echo $fa['text'] ? esc_html( $fa['text'] ) : esc_html__( 'New Answer', 'apotheca-skin-quiz' ); ?></span>
-                <button type="button" class="asq-remove-followup-answer button-link" title="<?php esc_attr_e( 'Delete', 'apotheca-skin-quiz' ); ?>"><span class="dashicons dashicons-trash"></span></button>
-            </div>
-            <div class="asq-followup-answer-body">
-                <p>
-                    <label><?php esc_html_e( 'Answer Text', 'apotheca-skin-quiz' ); ?></label><br>
-                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[text]" value="<?php echo esc_attr( $fa['text'] ); ?>" class="widefat asq-followup-answer-text-input">
-                </p>
-                <p>
-                    <label><?php esc_html_e( 'Description', 'apotheca-skin-quiz' ); ?></label><br>
-                    <input type="text" name="<?php echo esc_attr( $name_prefix ); ?>[description]" value="<?php echo esc_attr( $fa['description'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Optional', 'apotheca-skin-quiz' ); ?>">
-                </p>
-                <div class="asq-answer-image-wrap">
-                    <label><?php esc_html_e( 'Image', 'apotheca-skin-quiz' ); ?></label><br>
-                    <input type="hidden" name="<?php echo esc_attr( $name_prefix ); ?>[image_id]" value="<?php echo esc_attr( $fa['image_id'] ); ?>" class="asq-image-id">
-                    <div class="asq-image-preview" <?php echo $thumb_url ? '' : 'style="display:none;"'; ?>>
-                        <img src="<?php echo esc_url( $thumb_url ); ?>" alt="">
-                        <button type="button" class="asq-remove-image button-link" title="<?php esc_attr_e( 'Remove Image', 'apotheca-skin-quiz' ); ?>"><span class="dashicons dashicons-no-alt"></span> <?php esc_html_e( 'Remove', 'apotheca-skin-quiz' ); ?></button>
-                    </div>
-                    <button type="button" class="button asq-select-image"><?php esc_html_e( 'Select Image', 'apotheca-skin-quiz' ); ?></button>
-                </div>
-            </div>
-        </div>
+        <p class="description">
+            <?php esc_html_e( 'These ten questions are defined in code and shared across every quiz. To change the wording, the options or the finding mappings, edit includes/asq-quiz-config.php.', 'apotheca-skin-quiz' ); ?>
+        </p>
+        <ol class="asq-config-questions" style="margin-left:18px;">
+            <?php foreach ( $questions as $q ) : ?>
+                <li style="margin:0 0 14px;">
+                    <strong><?php echo esc_html( $q['text'] ); ?></strong>
+                    <?php if ( ! empty( $q['multiple'] ) ) : ?>
+                        <em>(<?php esc_html_e( 'select all that apply', 'apotheca-skin-quiz' ); ?>)</em>
+                    <?php endif; ?>
+                    <?php if ( ! empty( $q['optional'] ) ) : ?>
+                        <em>(<?php esc_html_e( 'skippable', 'apotheca-skin-quiz' ); ?>)</em>
+                    <?php endif; ?>
+                    <ul style="margin:6px 0 0 18px;list-style:disc;">
+                        <?php foreach ( $q['answers'] as $a ) : ?>
+                            <li>
+                                <?php echo esc_html( $a['text'] ); ?>
+                                <?php if ( ! empty( $a['findings'] ) ) : ?>
+                                    <span style="color:#646970;">&rarr; <?php echo esc_html( implode( ', ', $a['findings'] ) ); ?></span>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </li>
+            <?php endforeach; ?>
+        </ol>
+        <p class="description">
+            <strong><?php esc_html_e( 'Findings', 'apotheca-skin-quiz' ); ?>:</strong>
+            <?php
+            $bits = array();
+            foreach ( $findings as $id => $label ) {
+                $bits[] = $id . ' ' . $label;
+            }
+            echo esc_html( implode( '  ·  ', $bits ) );
+            ?>
+        </p>
         <?php
     }
 
@@ -621,11 +452,6 @@ class ASQ_Admin {
         if ( ! current_user_can( 'edit_post', $post_id ) ) {
             return;
         }
-
-        // Save questions
-        $raw_questions = $_POST['asq_questions'] ?? array();
-        $questions     = $this->sanitize_questions( $raw_questions );
-        update_post_meta( $post_id, '_asq_questions', $questions );
 
         // Save options (consent + owner notification only).
         $raw_options = $_POST['asq_options'] ?? array();
@@ -648,53 +474,6 @@ class ASQ_Admin {
             'footer_text'      => sanitize_text_field( $raw_email['footer_text'] ?? '' ),
         );
         update_post_meta( $post_id, '_asq_email_styles', $email_styles );
-    }
-
-    private function sanitize_questions( $raw ) {
-        $clean = array();
-        if ( ! is_array( $raw ) ) {
-            return $clean;
-        }
-        foreach ( $raw as $q ) {
-            $question = array(
-                'text'        => sanitize_text_field( $q['text'] ?? '' ),
-                'instruction' => sanitize_text_field( $q['instruction'] ?? '' ),
-                'multiple'    => ! empty( $q['multiple'] ) ? 1 : 0,
-                'answers'     => array(),
-            );
-            if ( ! empty( $q['answers'] ) && is_array( $q['answers'] ) ) {
-                foreach ( $q['answers'] as $a ) {
-                    $answer = array(
-                        'text'        => sanitize_text_field( $a['text'] ?? '' ),
-                        'description' => sanitize_text_field( $a['description'] ?? '' ),
-                        'image_id'    => absint( $a['image_id'] ?? 0 ),
-                    );
-                    // Follow-up question (optional).
-                    $answer['follow_up'] = array();
-                    if ( ! empty( $a['follow_up'] ) && is_array( $a['follow_up'] ) && ! empty( $a['follow_up']['text'] ) ) {
-                        $fu = array(
-                            'text'        => sanitize_text_field( $a['follow_up']['text'] ?? '' ),
-                            'instruction' => sanitize_text_field( $a['follow_up']['instruction'] ?? '' ),
-                            'multiple'    => ! empty( $a['follow_up']['multiple'] ) ? 1 : 0,
-                            'answers'     => array(),
-                        );
-                        if ( ! empty( $a['follow_up']['answers'] ) && is_array( $a['follow_up']['answers'] ) ) {
-                            foreach ( $a['follow_up']['answers'] as $fa ) {
-                                $fu['answers'][] = array(
-                                    'text'        => sanitize_text_field( $fa['text'] ?? '' ),
-                                    'description' => sanitize_text_field( $fa['description'] ?? '' ),
-                                    'image_id'    => absint( $fa['image_id'] ?? 0 ),
-                                );
-                            }
-                        }
-                        $answer['follow_up'] = $fu;
-                    }
-                    $question['answers'][] = $answer;
-                }
-            }
-            $clean[] = $question;
-        }
-        return $clean;
     }
 
 }

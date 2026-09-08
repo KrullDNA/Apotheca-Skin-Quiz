@@ -1076,22 +1076,27 @@ i.asq-loading-icon {
     display: block;
 }
 
-/* === Stage 3 placeholder: raw answer readout === */
-.asq-answers-readout {
+/* === Placeholder result: mapped findings readout === */
+.asq-findings-readout {
     margin: 0 auto;
     max-width: 640px;
 }
-.asq-answer-readout-row {
+.asq-finding-readout-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
     padding: 14px 0;
     border-bottom: 1px solid var(--asq-border, #e0e0e0);
 }
-.asq-answer-readout-q {
-    font-size: 13px;
-    font-weight: 600;
+.asq-finding-readout-id {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
     color: var(--asq-text-light, #666);
-    margin-bottom: 4px;
+    min-width: 34px;
 }
-.asq-answer-readout-a {
+.asq-finding-readout-label {
     font-size: 16px;
     color: var(--asq-text, #333);
     line-height: 1.5;

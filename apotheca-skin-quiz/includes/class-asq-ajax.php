@@ -60,11 +60,6 @@ class ASQ_Ajax {
             wp_send_json_error( array( 'message' => __( 'Invalid data.', 'apotheca-skin-quiz' ) ) );
         }
 
-        $questions = get_post_meta( $finder_id, '_asq_questions', true );
-        if ( ! is_array( $questions ) ) {
-            wp_send_json_error();
-        }
-
         $options = get_post_meta( $finder_id, '_asq_options', true );
         $options = wp_parse_args( (array) $options, array(
             'enable_consent' => 1,
@@ -73,12 +68,16 @@ class ASQ_Ajax {
         // Never expose the owner's notification address to visitors.
         unset( $options['notify_email'] );
 
-        // Turn the raw answer indices into readable question/answer text.
-        $readable = ASQ_Leads::resolve_answers( $finder_id, (array) $answers, (array) $followup_answers );
+        // Placeholder result: the findings the chosen answers map to, plus the
+        // readable answers behind them. The real firing rules, priority and
+        // suppression arrive with the engine in a later stage.
+        $findings = ASQ_Config::map_findings( (array) $answers );
+        $readable = ASQ_Config::resolve_answers( (array) $answers );
 
         wp_send_json_success( array(
-            'answers' => $readable,
-            'options' => $options,
+            'findings' => $findings,
+            'answers'  => $readable,
+            'options'  => $options,
         ) );
     }
 }

@@ -44,8 +44,10 @@ class ASQ_Frontend {
             return '<p>' . esc_html__( 'Apotheca Skin Quiz: invalid ID.', 'apotheca-skin-quiz' ) . '</p>';
         }
 
-        $questions = get_post_meta( $finder_id, '_asq_questions', true );
-        if ( ! is_array( $questions ) || empty( $questions ) ) {
+        // The ten questions are defined in one place, the config array, and
+        // shared across every quiz (front door). See asq-quiz-config.php.
+        $questions = ASQ_Config::questions();
+        if ( empty( $questions ) ) {
             return '<p>' . esc_html__( 'Apotheca Skin Quiz: no questions configured.', 'apotheca-skin-quiz' ) . '</p>';
         }
 
@@ -89,55 +91,16 @@ class ASQ_Frontend {
                 'email_placeholder' => __( 'Enter your email address', 'apotheca-skin-quiz' ),
                 'email_success'=> __( 'Results sent!', 'apotheca-skin-quiz' ),
                 'email_fail'   => __( 'Failed to send. Please try again.', 'apotheca-skin-quiz' ),
-                'your_results' => __( 'Your responses', 'apotheca-skin-quiz' ),
+                'your_results' => __( 'What your answers point to', 'apotheca-skin-quiz' ),
                 'start_over'   => __( 'Start Over', 'apotheca-skin-quiz' ),
                 'complete'     => __( 'Complete', 'apotheca-skin-quiz' ),
             ),
         ) );
 
-        // Build inline data for the finder so we don't need an extra AJAX call
-        $inline_data = array();
-        foreach ( $questions as $q ) {
-            $q_data = array(
-                'text'        => $q['text'],
-                'instruction' => $q['instruction'] ?? '',
-                'multiple'    => (bool) $q['multiple'],
-                'answers'     => array(),
-            );
-            foreach ( $q['answers'] as $a ) {
-                $image_url = ! empty( $a['image_id'] ) ? wp_get_attachment_image_url( $a['image_id'], 'large' ) : '';
-                $a_data = array(
-                    'text'        => $a['text'],
-                    'description' => $a['description'] ?? '',
-                    'image'       => $image_url,
-                );
-
-                // Include follow-up question data if present
-                if ( ! empty( $a['follow_up'] ) && ! empty( $a['follow_up']['text'] ) ) {
-                    $fu = $a['follow_up'];
-                    $fu_data = array(
-                        'text'        => $fu['text'],
-                        'instruction' => $fu['instruction'] ?? '',
-                        'multiple'    => ! empty( $fu['multiple'] ),
-                        'answers'     => array(),
-                    );
-                    if ( ! empty( $fu['answers'] ) ) {
-                        foreach ( $fu['answers'] as $fa ) {
-                            $fa_image = ! empty( $fa['image_id'] ) ? wp_get_attachment_image_url( $fa['image_id'], 'large' ) : '';
-                            $fu_data['answers'][] = array(
-                                'text'        => $fa['text'] ?? '',
-                                'description' => $fa['description'] ?? '',
-                                'image'       => $fa_image,
-                            );
-                        }
-                    }
-                    $a_data['follow_up'] = $fu_data;
-                }
-
-                $q_data['answers'][] = $a_data;
-            }
-            $inline_data[] = $q_data;
-        }
+        // Build inline data for the quiz so we don't need an extra AJAX call.
+        // Text, instruction, multiple and the answer labels only; the finding
+        // mappings stay server-side.
+        $inline_data = ASQ_Config::frontend_questions();
 
         // Admin-only settings must not end up in the public markup.
         $public_options = $options;
