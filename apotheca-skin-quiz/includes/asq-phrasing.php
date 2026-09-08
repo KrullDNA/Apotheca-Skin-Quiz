@@ -42,8 +42,9 @@ return array(
     // The medical gate response (used from Stage 7). Calm, names nothing,
     // offers no reassurance, makes no attempt to be clever.
     'gate' => array(
-        'heading' => __( 'Worth showing to someone', 'apotheca-skin-quiz' ),
-        'body'    => __( "One of the things you ticked is worth showing to a doctor or a pharmacist, rather than working through with us. It can be looked at properly, and the things that help are mostly not skincare. We've stopped the rest of the reading here on purpose. Anything we said about routines would be beside the point, and we'd rather say less than send you off in the wrong direction.", 'apotheca-skin-quiz' ),
+        'heading'   => __( 'Worth showing to someone', 'apotheca-skin-quiz' ),
+        'body'      => __( "One of the things you ticked is worth showing to a doctor or a pharmacist, rather than working through with us. It can be looked at properly, and the things that help are mostly not skincare. We've stopped the rest of the reading here on purpose. Anything we said about routines would be beside the point, and we'd rather say less than send you off in the wrong direction.", 'apotheca-skin-quiz' ),
+        'email_ack' => __( "Thanks for taking the quiz. Based on one of your answers, we'd gently suggest showing that to a doctor or a pharmacist rather than working through it with us. We haven't put together a skin reading this time, on purpose, and we'd rather say less than point you in the wrong direction.", 'apotheca-skin-quiz' ),
     ),
 
     'findings' => array(

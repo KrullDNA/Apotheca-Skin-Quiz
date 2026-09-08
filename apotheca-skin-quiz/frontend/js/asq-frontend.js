@@ -27,6 +27,7 @@
         this.history    = [];  // navigation stack: [{ type:'question', qi:N }, { type:'followup', qi:N, ai:M }, ...]
         this.totalQ     = this.questions.length;
         this.view       = 'question';  // which screen is showing: question | followup | email
+        this.gate       = asqFrontend.gate || null;  // { qi, safe } medical gate
 
         this.$progress      = $el.find('.asq-progress-fill');
         this.$progressText  = $el.find('.asq-progress-text');
@@ -424,7 +425,7 @@
                 // Coming from a follow-up, advance to next main question
                 var nextQi = lastEntry.qi + 1;
                 if (nextQi >= this.totalQ) {
-                    this.showEmail();
+                    this.finish();
                     return;
                 }
                 this.current = nextQi;
@@ -456,7 +457,7 @@
             } else {
                 var nextQi = qi + 1;
                 if (nextQi >= this.totalQ) {
-                    this.showEmail();
+                    this.finish();
                     return;
                 }
                 this.current = nextQi;
@@ -492,6 +493,43 @@
             this.$progressText.text(pct + '%');
             // Persist progress so a refresh resumes at the same screen.
             this.persistState();
+        },
+
+        /* ───────── Finish: gate or email ───────── */
+
+        // True if any selection on the gate question is something other than
+        // the safe "none of these" option.
+        isGated: function () {
+            if (!this.gate) return false;
+            var sel = this.answers[this.gate.qi] || [];
+            for (var i = 0; i < sel.length; i++) {
+                if (sel[i] !== this.gate.safe) return true;
+            }
+            return false;
+        },
+
+        // Tell the server the gate fired. No answers, no option, no address.
+        recordGate: function () {
+            if (this._gateRecorded) return;
+            this._gateRecorded = true;
+            $.post(asqFrontend.ajax_url, {
+                action: 'asq_record_gate',
+                nonce: asqFrontend.nonce,
+                finder_id: this.finderId
+            });
+        },
+
+        // Reached the end of the questions.
+        finish: function () {
+            if (this.isGated()) {
+                // The medical gate replaces the normal path: no email screen,
+                // no reading. Don't leave the medical selections in the browser.
+                this.clearState();
+                this.recordGate();
+                this.showLoading();
+                return;
+            }
+            this.showEmail();
         },
 
         /* ───────── Email screen ───────── */
@@ -648,6 +686,11 @@
         showResults: function (data) {
             this.$loadingScreen.hide();
             this._cachedResults = data;
+
+            // The medical gate response stands alone, so drop the results
+            // title above it; a normal reading keeps it.
+            var $title = this.$resultsScreen.find('.asq-results-title');
+            if (data.is_gate) { $title.hide(); } else { $title.show(); }
 
             // Prefer the server-rendered reading; fall back to a plain finding
             // list if it is missing for any reason.

@@ -21,6 +21,23 @@ class ASQ_Ajax {
         // Frontend: compute the result from the answers.
         add_action( 'wp_ajax_asq_compute_results', array( $this, 'compute_results' ) );
         add_action( 'wp_ajax_nopriv_asq_compute_results', array( $this, 'compute_results' ) );
+
+        // Frontend: record only that the medical gate fired (no PII, no option).
+        add_action( 'wp_ajax_asq_record_gate', array( $this, 'record_gate' ) );
+        add_action( 'wp_ajax_nopriv_asq_record_gate', array( $this, 'record_gate' ) );
+    }
+
+    /**
+     * Store nothing but the fact that the gate fired.
+     */
+    public function record_gate() {
+        check_ajax_referer( 'asq_frontend_nonce', 'nonce' );
+        $finder_id = absint( $_POST['finder_id'] ?? 0 );
+        if ( ! $finder_id ) {
+            wp_send_json_error();
+        }
+        ASQ_Leads::record_gate( $finder_id );
+        wp_send_json_success();
     }
 
     /**
@@ -68,12 +85,25 @@ class ASQ_Ajax {
         // Never expose the owner's notification address to visitors.
         unset( $options['notify_email'] );
 
-        // Run the findings engine, then render the written reading.
+        // Run the findings engine, then render the reading.
         $findings     = ASQ_Engine::evaluate( (array) $answers );
         $reading_html = ASQ_Presenter::render( $findings, (array) $answers );
-        $readable     = ASQ_Config::resolve_answers( (array) $answers );
+
+        // The medical gate replaces the reading. Return only what the screen
+        // needs to show it, never the answers or findings behind it.
+        $is_gate = ( 1 === count( $findings ) && isset( $findings[0]['id'] ) && 'F11' === $findings[0]['id'] );
+        if ( $is_gate ) {
+            wp_send_json_success( array(
+                'is_gate'      => true,
+                'reading_html' => $reading_html,
+                'options'      => $options,
+            ) );
+        }
+
+        $readable = ASQ_Config::resolve_answers( (array) $answers );
 
         wp_send_json_success( array(
+            'is_gate'      => false,
             'reading_html' => $reading_html,
             'findings'     => $findings,
             'answers'      => $readable,

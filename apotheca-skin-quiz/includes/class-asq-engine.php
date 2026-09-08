@@ -113,6 +113,20 @@ class ASQ_Engine {
         return $out;
     }
 
+    /**
+     * True if the answer set trips the medical gate. Used server-side to
+     * enforce the data rule regardless of what the browser does.
+     */
+    public static function is_gate( $answers ) {
+        $rules   = self::rules();
+        $gate_id = isset( $rules['gate'] ) ? $rules['gate'] : '';
+        if ( ! $gate_id || empty( $rules['findings'][ $gate_id ]['fires_when'] ) ) {
+            return false;
+        }
+        $selected = ASQ_Config::selected_keys( (array) $answers );
+        return null !== self::first_matching_clause( $rules['findings'][ $gate_id ]['fires_when'], $selected );
+    }
+
     /* ────────── internals ────────── */
 
     public static function by_priority( $a, $b ) {

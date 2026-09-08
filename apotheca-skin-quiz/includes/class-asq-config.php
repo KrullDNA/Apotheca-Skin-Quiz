@@ -156,6 +156,27 @@ class ASQ_Config {
     }
 
     /**
+     * Locate the medical gate for the front end: the question that carries a
+     * "safe" answer (the "none of these" option), and that answer's index.
+     * Any other selection on that question trips the gate.
+     *
+     * @return array|null [ 'qi' => int question index, 'safe' => int answer index ]
+     */
+    public static function gate_meta() {
+        foreach ( self::questions() as $i => $q ) {
+            if ( empty( $q['answers'] ) ) {
+                continue;
+            }
+            foreach ( $q['answers'] as $ai => $a ) {
+                if ( ! empty( $a['safe'] ) ) {
+                    return array( 'qi' => (int) $i, 'safe' => (int) $ai );
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
      * The text of a question, by its short id.
      */
     public static function question_text_by_id( $qid ) {

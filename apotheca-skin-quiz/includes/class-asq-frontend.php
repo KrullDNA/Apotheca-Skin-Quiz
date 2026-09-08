@@ -80,6 +80,7 @@ class ASQ_Frontend {
             'finder_id'     => $finder_id,
             'page_url'      => $page_url,
             'results_token' => $results_token,
+            'gate'          => ASQ_Config::gate_meta(),
             'i18n'          => array(
                 'next'         => __( 'Continue', 'apotheca-skin-quiz' ),
                 'back'         => __( 'Back', 'apotheca-skin-quiz' ),

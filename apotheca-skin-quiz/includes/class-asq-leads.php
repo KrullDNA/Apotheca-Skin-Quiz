@@ -118,6 +118,37 @@ class ASQ_Leads {
     }
 
     /**
+     * Record only that the medical gate fired.
+     *
+     * Deliberately stores nothing about the person and nothing about which
+     * option was ticked: a per-quiz count and the last time it happened, so
+     * the admin can see how often the gate trips without ever turning a
+     * health disclosure into data about someone. No lead row, no fields, and
+     * nothing is pushed to a connector.
+     */
+    public static function record_gate( $finder_id ) {
+        $finder_id = absint( $finder_id );
+        $events    = get_option( 'asq_gate_events', array() );
+        if ( ! is_array( $events ) ) {
+            $events = array();
+        }
+        if ( ! isset( $events[ $finder_id ] ) || ! is_array( $events[ $finder_id ] ) ) {
+            $events[ $finder_id ] = array( 'count' => 0, 'last' => '' );
+        }
+        $events[ $finder_id ]['count'] = (int) $events[ $finder_id ]['count'] + 1;
+        $events[ $finder_id ]['last']  = current_time( 'mysql' );
+        update_option( 'asq_gate_events', $events, false );
+
+        /**
+         * Fires when the gate trips. Never carries the person's data or the
+         * option they ticked, only the quiz id.
+         *
+         * @param int $finder_id Quiz post ID.
+         */
+        do_action( 'asq_gate_fired', $finder_id );
+    }
+
+    /**
      * Fetch a single lead as an array with answers/products decoded.
      * Used by integration add-ons that sync in a background cron job.
      *
