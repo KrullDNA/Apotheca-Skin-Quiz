@@ -50,6 +50,33 @@ return array(
         'F11' => __( 'Medical referral', 'apotheca-skin-quiz' ),
     ),
 
+    // Read-next mapping: each finding points at one or two Skin Topic terms,
+    // by slug, on the shared taxonomy the Ingredient List Decoder registers.
+    // The read-next block queries published posts carrying these terms.
+    //
+    // These slugs must match the Skin Topic terms on the site. The decoder
+    // seeds these ten by default, so their slugs are:
+    //   pigmentation, firmness-and-collagen, barrier-and-sensitivity,
+    //   hydration, texture-and-pores, congestion, perimenopause-and-skin,
+    //   ageing-and-cell-turnover, formulation-and-use-levels,
+    //   clean-and-natural-origin
+    // Edit the mapping here if you rename a term or add your own.
+    'finding_topics' => array(
+        'F1' => array( 'hydration' ),
+        'F2' => array( 'barrier-and-sensitivity' ),
+        'F3' => array( 'barrier-and-sensitivity', 'texture-and-pores' ),
+        'F4' => array( 'formulation-and-use-levels', 'barrier-and-sensitivity' ),
+        'F5' => array( 'barrier-and-sensitivity' ),
+        'F6' => array( 'perimenopause-and-skin', 'ageing-and-cell-turnover' ),
+        'F7' => array( 'congestion', 'hydration' ),
+        'F8' => array( 'formulation-and-use-levels', 'clean-and-natural-origin' ),
+        'F9' => array( 'hydration', 'barrier-and-sensitivity' ),
+        'F10' => array( 'ageing-and-cell-turnover' ),
+    ),
+
+    // The gate offers at most one general, non-specific article. One term.
+    'gate_topics' => array( 'ageing-and-cell-turnover' ),
+
     'questions' => array(
 
         // Q1 ── The framing question.

@@ -1121,6 +1121,74 @@ i.asq-loading-icon {
     font-size: 17px;
 }
 
+/* === Read-next articles === */
+.asq-readnext-intro {
+    font-size: 15px;
+    color: var(--asq-text-light, #666);
+    margin: 0 0 14px;
+}
+.asq-readnext-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
+}
+.asq-readnext-card {
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--asq-border, #e0e0e0);
+    border-radius: var(--asq-radius-sm, 8px);
+    overflow: hidden;
+    transition: box-shadow var(--asq-transition, 0.25s ease), border-color var(--asq-transition, 0.25s ease);
+}
+.asq-readnext-card:hover {
+    border-color: var(--asq-text, #333);
+    box-shadow: var(--asq-shadow, 0 2px 12px rgba(0,0,0,0.08));
+}
+.asq-readnext-thumb {
+    flex: 0 0 96px;
+    display: block;
+}
+.asq-readnext-thumb img {
+    width: 96px;
+    height: 100%;
+    min-height: 96px;
+    object-fit: cover;
+    display: block;
+}
+.asq-readnext-body {
+    display: block;
+    padding: 14px 16px 14px 0;
+}
+.asq-readnext-card:not(:has(.asq-readnext-thumb)) .asq-readnext-body {
+    padding-left: 16px;
+}
+.asq-readnext-title {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--asq-text, #333);
+    margin-bottom: 4px;
+}
+.asq-readnext-excerpt {
+    display: block;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--asq-text-light, #666);
+    margin-bottom: 8px;
+}
+.asq-readnext-more {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--asq-reading-accent, inherit);
+}
+
 /* === Placeholder result: mapped findings readout === */
 .asq-findings-readout {
     margin: 0 auto;

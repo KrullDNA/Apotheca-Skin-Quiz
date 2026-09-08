@@ -37,7 +37,7 @@ class ASQ_Presenter {
      * @return array Either a gate reading ( is_gate => true, heading, body )
      *               or a normal reading ( is_gate => false, sections => [...] ).
      */
-    public static function build_reading( $findings, $answers ) {
+    public static function build_reading( $findings, $answers, $articles = array() ) {
         $p    = self::phrasing();
         $amap = self::answer_map( $answers );
 
@@ -45,9 +45,10 @@ class ASQ_Presenter {
         foreach ( (array) $findings as $f ) {
             if ( isset( $f['id'] ) && 'F11' === $f['id'] ) {
                 return array(
-                    'is_gate' => true,
-                    'heading' => $p['gate']['heading'],
-                    'body'    => self::resolve( $p['gate']['body'], $amap ),
+                    'is_gate'  => true,
+                    'heading'  => $p['gate']['heading'],
+                    'body'     => self::resolve( $p['gate']['body'], $amap ),
+                    'articles' => (array) $articles,
                 );
             }
         }
@@ -94,6 +95,14 @@ class ASQ_Presenter {
         if ( $tries ) {
             $sections[] = array( 'key' => 'worth_trying', 'heading' => $p['sections']['worth_trying'], 'paragraphs' => $tries );
         }
+        if ( ! empty( $articles ) ) {
+            $sections[] = array(
+                'key'      => 'read_next',
+                'heading'  => $p['sections']['read_next'],
+                'intro'    => isset( $p['read_next_intro'] ) ? $p['read_next_intro'] : '',
+                'articles' => (array) $articles,
+            );
+        }
 
         return array( 'is_gate' => false, 'sections' => $sections );
     }
@@ -101,18 +110,29 @@ class ASQ_Presenter {
     /**
      * Build and render the reading to HTML in one step.
      */
-    public static function render( $findings, $answers ) {
-        return self::render_html( self::build_reading( $findings, $answers ) );
+    public static function render( $findings, $answers, $articles = array() ) {
+        return self::render_html( self::build_reading( $findings, $answers, $articles ) );
     }
 
     /**
      * Render a reading array to HTML.
      */
     public static function render_html( $reading ) {
+        $p = self::phrasing();
+
         if ( ! empty( $reading['is_gate'] ) ) {
             $html  = '<div class="asq-reading asq-reading--gate">';
             $html .= '<h3 class="asq-reading-heading asq-reading-heading--gate">' . esc_html( self::texturize( $reading['heading'] ) ) . '</h3>';
             $html .= '<div class="asq-reading-section asq-reading-section--gate"><p class="asq-reading-p">' . $reading['body'] . '</p></div>';
+            if ( ! empty( $reading['articles'] ) ) {
+                $intro = isset( $p['gate']['read_next_intro'] ) ? $p['gate']['read_next_intro'] : '';
+                $html .= '<section class="asq-reading-section asq-reading-section--read_next">';
+                if ( $intro ) {
+                    $html .= '<p class="asq-reading-p asq-readnext-intro">' . esc_html( self::texturize( $intro ) ) . '</p>';
+                }
+                $html .= self::render_articles( $reading['articles'] );
+                $html .= '</section>';
+            }
             $html .= '</div>';
             return $html;
         }
@@ -121,10 +141,49 @@ class ASQ_Presenter {
         foreach ( $reading['sections'] as $section ) {
             $html .= '<section class="asq-reading-section asq-reading-section--' . esc_attr( $section['key'] ) . '">';
             $html .= '<h3 class="asq-reading-heading">' . esc_html( self::texturize( $section['heading'] ) ) . '</h3>';
-            foreach ( $section['paragraphs'] as $para ) {
-                $html .= '<p class="asq-reading-p">' . $para . '</p>';
+
+            if ( 'read_next' === $section['key'] ) {
+                if ( ! empty( $section['intro'] ) ) {
+                    $html .= '<p class="asq-reading-p asq-readnext-intro">' . esc_html( self::texturize( $section['intro'] ) ) . '</p>';
+                }
+                $html .= self::render_articles( $section['articles'] );
+            } else {
+                foreach ( $section['paragraphs'] as $para ) {
+                    $html .= '<p class="asq-reading-p">' . $para . '</p>';
+                }
             }
             $html .= '</section>';
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Render the read-next article cards (thumbnail, title, excerpt, link),
+     * in the same shape as the decoder's so the two tools feel related.
+     */
+    protected static function render_articles( $articles ) {
+        $p     = self::phrasing();
+        $label = isset( $p['read_more'] ) ? $p['read_more'] : __( 'Read more', 'apotheca-skin-quiz' );
+
+        $html = '<div class="asq-readnext-cards">';
+        foreach ( (array) $articles as $card ) {
+            $url = isset( $card['url'] ) ? $card['url'] : '';
+            if ( '' === $url ) {
+                continue;
+            }
+            $html .= '<a class="asq-readnext-card" href="' . esc_url( $url ) . '">';
+            if ( ! empty( $card['thumb'] ) ) {
+                $html .= '<span class="asq-readnext-thumb"><img src="' . esc_url( $card['thumb'] ) . '" alt="" loading="lazy"></span>';
+            }
+            $html .= '<span class="asq-readnext-body">';
+            $html .= '<span class="asq-readnext-title">' . esc_html( self::texturize( isset( $card['title'] ) ? $card['title'] : '' ) ) . '</span>';
+            if ( ! empty( $card['excerpt'] ) ) {
+                $html .= '<span class="asq-readnext-excerpt">' . esc_html( self::texturize( $card['excerpt'] ) ) . '</span>';
+            }
+            $html .= '<span class="asq-readnext-more">' . esc_html( $label ) . '</span>';
+            $html .= '</span>';
+            $html .= '</a>';
         }
         $html .= '</div>';
         return $html;

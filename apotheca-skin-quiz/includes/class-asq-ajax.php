@@ -85,14 +85,19 @@ class ASQ_Ajax {
         // Never expose the owner's notification address to visitors.
         unset( $options['notify_email'] );
 
-        // Run the findings engine, then render the reading.
-        $findings     = ASQ_Engine::evaluate( (array) $answers );
-        $reading_html = ASQ_Presenter::render( $findings, (array) $answers );
+        // The page the quiz sits on, so read-next can exclude it.
+        $source_id = absint( $_POST['source_id'] ?? 0 );
 
-        // The medical gate replaces the reading. Return only what the screen
-        // needs to show it, never the answers or findings behind it.
-        $is_gate = ( 1 === count( $findings ) && isset( $findings[0]['id'] ) && 'F11' === $findings[0]['id'] );
+        // Run the findings engine.
+        $findings = ASQ_Engine::evaluate( (array) $answers );
+        $is_gate  = ( 1 === count( $findings ) && isset( $findings[0]['id'] ) && 'F11' === $findings[0]['id'] );
+
+        // The medical gate replaces the reading. It may offer at most one
+        // general article. Return only what the screen needs to show it,
+        // never the answers or findings behind it.
         if ( $is_gate ) {
+            $articles     = ASQ_Read_Next::for_gate( $source_id );
+            $reading_html = ASQ_Presenter::render( $findings, (array) $answers, $articles );
             wp_send_json_success( array(
                 'is_gate'      => true,
                 'reading_html' => $reading_html,
@@ -100,7 +105,10 @@ class ASQ_Ajax {
             ) );
         }
 
-        $readable = ASQ_Config::resolve_answers( (array) $answers );
+        // Normal reading, with up to three read-next articles.
+        $articles     = ASQ_Read_Next::for_findings( $findings, $source_id );
+        $reading_html = ASQ_Presenter::render( $findings, (array) $answers, $articles );
+        $readable     = ASQ_Config::resolve_answers( (array) $answers );
 
         wp_send_json_success( array(
             'is_gate'      => false,

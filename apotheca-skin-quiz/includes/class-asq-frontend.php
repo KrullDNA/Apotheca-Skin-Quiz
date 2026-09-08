@@ -79,6 +79,7 @@ class ASQ_Frontend {
             'nonce'         => wp_create_nonce( 'asq_frontend_nonce' ),
             'finder_id'     => $finder_id,
             'page_url'      => $page_url,
+            'source_id'     => (int) get_the_ID(),
             'results_token' => $results_token,
             'gate'          => ASQ_Config::gate_meta(),
             'i18n'          => array(

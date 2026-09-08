@@ -50,6 +50,22 @@ class ASQ_Config {
     }
 
     /**
+     * The Skin Topic term slugs a finding maps to for read-next.
+     */
+    public static function finding_topics( $id ) {
+        $all = self::all();
+        return isset( $all['finding_topics'][ $id ] ) ? (array) $all['finding_topics'][ $id ] : array();
+    }
+
+    /**
+     * The single general Skin Topic term the medical gate may offer.
+     */
+    public static function gate_topics() {
+        $all = self::all();
+        return isset( $all['gate_topics'] ) ? (array) $all['gate_topics'] : array();
+    }
+
+    /**
      * The data the front end needs to render the quiz: text, instruction,
      * multiple and the answer labels. Deliberately excludes the finding
      * mappings, which stay server-side.

@@ -613,6 +613,7 @@
                 action: 'asq_compute_results',
                 nonce: asqFrontend.nonce,
                 finder_id: self.finderId,
+                source_id: asqFrontend.source_id,
                 answers: '{}',
                 followup_answers: '{}',
                 results_token: token
@@ -666,6 +667,7 @@
                 action: 'asq_compute_results',
                 nonce: asqFrontend.nonce,
                 finder_id: this.finderId,
+                source_id: asqFrontend.source_id,
                 answers: JSON.stringify(this.answers),
                 followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {
