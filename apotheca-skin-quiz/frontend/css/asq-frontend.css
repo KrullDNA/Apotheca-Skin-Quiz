@@ -1253,6 +1253,27 @@ i.asq-loading-icon {
     color: var(--asq-reading-accent, inherit);
 }
 
+/* === Visible focus states for the result sections (keyboard access) === */
+/* The result title / gate region receive focus on load but shouldn't show a
+   focus ring, since focus lands there programmatically, not by tabbing. */
+.asq-results-title:focus,
+.asq-results-container:focus {
+    outline: none;
+}
+/* Read-next cards are real links: give them a clear, on-brand focus ring. */
+.asq-readnext-card:focus-visible {
+    outline: 2px solid var(--asq-reading-accent, var(--asq-accent, #333));
+    outline-offset: 2px;
+    border-color: var(--asq-text, #333);
+}
+/* Gate: checkbox, send button and email field all show a visible focus ring. */
+.asq-gate-form .asq-consent-checkbox:focus-visible,
+.asq-gate-form .asq-send-email:focus-visible,
+.asq-gate-form .asq-email-input:focus-visible {
+    outline: 2px solid var(--asq-accent, #333);
+    outline-offset: 2px;
+}
+
 /* === Placeholder result: mapped findings readout === */
 .asq-findings-readout {
     margin: 0 auto;

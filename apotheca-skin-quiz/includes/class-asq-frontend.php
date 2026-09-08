@@ -159,8 +159,8 @@ class ASQ_Frontend {
 
             <!-- Results screen -->
             <div class="asq-results-screen" style="display:none;">
-                <h3 class="asq-results-title"></h3>
-                <div class="asq-results-container"></div>
+                <h3 class="asq-results-title" tabindex="-1"></h3>
+                <div class="asq-results-container" role="region" aria-live="polite" aria-atomic="false" aria-label="<?php esc_attr_e( 'Your reading', 'apotheca-skin-quiz' ); ?>"></div>
                 <div class="asq-results-actions">
                     <button type="button" class="asq-btn asq-btn-secondary asq-start-over"></button>
                 </div>

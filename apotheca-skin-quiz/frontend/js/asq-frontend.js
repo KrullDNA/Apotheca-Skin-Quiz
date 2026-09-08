@@ -564,7 +564,7 @@
             var h = '<div class="asq-gate">';
             h += '<p class="asq-gate-lead">' + this.escHtml(i.email_gate_lead) + '</p>';
             h += '<div class="asq-gate-form">';
-            h += '<input type="email" class="asq-email-input" placeholder="' + this.escHtml(i.email_placeholder) + '">';
+            h += '<input type="email" class="asq-email-input" autocomplete="email" aria-label="' + this.escHtml(i.email_placeholder) + '" placeholder="' + this.escHtml(i.email_placeholder) + '">';
             if (asqFrontend.consent_enabled) {
                 h += '<label class="asq-consent-label"><input type="checkbox" class="asq-consent-checkbox" value="1"><span>' + this.escHtml(asqFrontend.consent_text) + '</span></label>';
             }
@@ -769,10 +769,21 @@
                 this.syncConsent();
             }
 
-            // Reveal the results screen and announce it to screen readers.
-            this.$resultsScreen.attr('aria-live', 'polite');
+            // Reveal the results screen. The results container is a static
+            // aria-live region (see the shell markup), so injecting the reading
+            // above announces it to screen readers. We also move keyboard focus
+            // to the heading (gate: the reading region) so keyboard users land
+            // at the start of the result rather than back at the top of the page.
             this.$resultsScreen.css({ opacity: 0, display: 'block' });
             this.$resultsScreen.animate({ opacity: 1 }, 300);
+
+            var $focusTarget = data.is_gate ? $container : $title;
+            if ($focusTarget && $focusTarget.length) {
+                if (data.is_gate) {
+                    $container.attr('tabindex', '-1');
+                }
+                try { $focusTarget.trigger('focus'); } catch (e) {}
+            }
         },
 
         /* ───────── Start over ───────── */

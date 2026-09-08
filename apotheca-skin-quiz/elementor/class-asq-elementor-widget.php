@@ -52,6 +52,9 @@ class ASQ_Elementor_Widget extends Widget_Base {
         $this->section_style_loading_screen();
         $this->section_style_results();
         $this->section_style_result_cards();
+        $this->section_style_reading();
+        $this->section_style_gate_result();
+        $this->section_style_read_next();
     }
 
     /* ─── Content ─── */
@@ -1362,6 +1365,415 @@ class ASQ_Elementor_Widget extends Widget_Base {
         $this->add_group_control( Group_Control_Typography::get_type(), array(
             'name'     => 'card_price_typography',
             'selector' => '{{WRAPPER}} .asq-result-price',
+        ) );
+
+        $this->end_controls_section();
+    }
+
+    /* ─── Style: The reading (written result) ─── */
+
+    /**
+     * Controls for the written reading that replaces the product grid:
+     * the four fixed sections (each with a small heading and body copy),
+     * the accent used on emphasised reframe phrases, and the vertical
+     * rhythm between sections. Typography groups are responsive by
+     * design; spacing uses responsive controls so a one-finding reading
+     * and a five-finding reading both stay intentional at every breakpoint.
+     */
+    private function section_style_reading() {
+        $this->start_controls_section( 'section_style_reading', array(
+            'label' => __( 'Result Reading', 'apotheca-skin-quiz' ),
+            'tab'   => Controls_Manager::TAB_STYLE,
+        ) );
+
+        // Overall reading block
+        $this->add_responsive_control( 'reading_max_width', array(
+            'label'      => __( 'Reading Max Width', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', '%' ),
+            'range'      => array(
+                'px' => array( 'min' => 360, 'max' => 900 ),
+                '%'  => array( 'min' => 40, 'max' => 100 ),
+            ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-reading' => 'max-width: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'reading_align', array(
+            'label'     => __( 'Text Alignment', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::CHOOSE,
+            'options'   => array(
+                'left'   => array( 'title' => __( 'Left', 'apotheca-skin-quiz' ), 'icon' => 'eicon-text-align-left' ),
+                'center' => array( 'title' => __( 'Center', 'apotheca-skin-quiz' ), 'icon' => 'eicon-text-align-center' ),
+                'right'  => array( 'title' => __( 'Right', 'apotheca-skin-quiz' ), 'icon' => 'eicon-text-align-right' ),
+            ),
+            'selectors' => array(
+                '{{WRAPPER}} .asq-reading' => 'text-align: {{VALUE}};',
+            ),
+        ) );
+
+        // Spacing between the four sections
+        $this->add_responsive_control( 'reading_section_gap', array(
+            'label'      => __( 'Space Between Sections', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 80 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-reading-section' => 'margin-bottom: {{SIZE}}{{UNIT}};',
+                '{{WRAPPER}} .asq-reading-section:last-child' => 'margin-bottom: 0;',
+            ),
+        ) );
+
+        // Section heading
+        $this->add_control( 'reading_heading_h', array(
+            'label'     => __( 'Section Heading', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'reading_heading_color', array(
+            'label'     => __( 'Heading Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-reading-heading' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'reading_heading_typography',
+            'selector' => '{{WRAPPER}} .asq-reading-heading',
+        ) );
+
+        $this->add_responsive_control( 'reading_heading_spacing', array(
+            'label'      => __( 'Heading Spacing (below)', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-reading-heading' => 'margin-bottom: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        // Body copy
+        $this->add_control( 'reading_body_h', array(
+            'label'     => __( 'Body Copy', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'reading_body_color', array(
+            'label'     => __( 'Body Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-reading-p' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'reading_body_typography',
+            'selector' => '{{WRAPPER}} .asq-reading-p',
+        ) );
+
+        $this->add_responsive_control( 'reading_body_spacing', array(
+            'label'      => __( 'Paragraph Spacing', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-reading-p' => 'margin-bottom: {{SIZE}}{{UNIT}};',
+                '{{WRAPPER}} .asq-reading-p:last-child' => 'margin-bottom: 0;',
+            ),
+        ) );
+
+        // Emphasis accent
+        $this->add_control( 'reading_accent_h', array(
+            'label'     => __( 'Emphasised Phrases', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'reading_accent_color', array(
+            'label'       => __( 'Accent Colour', 'apotheca-skin-quiz' ),
+            'description' => __( 'Used on the emphasised reframe phrases in the reading, and on the read-next link label.', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::COLOR,
+            'selectors'   => array(
+                '{{WRAPPER}} .asq-reading' => '--asq-reading-accent: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'reading_accent_typography',
+            'label'    => __( 'Emphasis Typography', 'apotheca-skin-quiz' ),
+            'selector' => '{{WRAPPER}} .asq-reading-em',
+        ) );
+
+        $this->end_controls_section();
+    }
+
+    /* ─── Style: Medical gate result ─── */
+
+    /**
+     * Separate container styling for the safety gate reading. Styled
+     * calmly rather than as an alert: it reuses the reading container but
+     * exposes its own background, border, radius, padding and heading so
+     * the gate can be given a quiet, distinct treatment without shouting.
+     */
+    private function section_style_gate_result() {
+        $this->start_controls_section( 'section_style_gate_result', array(
+            'label' => __( 'Medical Gate Result', 'apotheca-skin-quiz' ),
+            'tab'   => Controls_Manager::TAB_STYLE,
+        ) );
+
+        $this->add_control( 'gate_note', array(
+            'type'            => Controls_Manager::RAW_HTML,
+            'raw'             => __( 'Shown only when an answer trips the safety gate. Keep it calm, not alarming.', 'apotheca-skin-quiz' ),
+            'content_classes' => 'elementor-descriptor',
+        ) );
+
+        $this->add_control( 'gate_bg', array(
+            'label'     => __( 'Background', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-reading--gate' => 'background-color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Border::get_type(), array(
+            'name'     => 'gate_border',
+            'selector' => '{{WRAPPER}} .asq-reading--gate',
+        ) );
+
+        $this->add_responsive_control( 'gate_radius', array(
+            'label'      => __( 'Border Radius', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-reading--gate' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'gate_padding', array(
+            'label'      => __( 'Padding', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-reading--gate' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        // Gate heading
+        $this->add_control( 'gate_heading_h', array(
+            'label'     => __( 'Gate Heading', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'gate_heading_color', array(
+            'label'     => __( 'Heading Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-reading--gate .asq-reading-heading--gate' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'gate_heading_typography',
+            'selector' => '{{WRAPPER}} .asq-reading--gate .asq-reading-heading--gate',
+        ) );
+
+        // Gate body
+        $this->add_control( 'gate_body_h', array(
+            'label'     => __( 'Gate Body', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'gate_body_color', array(
+            'label'     => __( 'Body Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-reading--gate .asq-reading-p' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'gate_body_typography',
+            'selector' => '{{WRAPPER}} .asq-reading--gate .asq-reading-p',
+        ) );
+
+        $this->end_controls_section();
+    }
+
+    /* ─── Style: Read-next articles ─── */
+
+    /**
+     * Read-next block controls, matched to the Ingredient List Decoder's
+     * article cards so the two tools read as one family: intro line, card
+     * container (background, border, radius, gap, padding), thumbnail
+     * size, title and excerpt typography and colour, and the "read more"
+     * label. All spacing controls are responsive.
+     */
+    private function section_style_read_next() {
+        $this->start_controls_section( 'section_style_read_next', array(
+            'label' => __( 'Read-Next Articles', 'apotheca-skin-quiz' ),
+            'tab'   => Controls_Manager::TAB_STYLE,
+        ) );
+
+        // Intro line
+        $this->add_control( 'rn_intro_color', array(
+            'label'     => __( 'Intro Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-intro' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'rn_intro_typography',
+            'selector' => '{{WRAPPER}} .asq-readnext-intro',
+        ) );
+
+        $this->add_responsive_control( 'rn_intro_spacing', array(
+            'label'      => __( 'Intro Spacing (below)', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-intro' => 'margin-bottom: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        // Cards
+        $this->add_control( 'rn_cards_h', array(
+            'label'     => __( 'Cards', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_responsive_control( 'rn_cards_gap', array(
+            'label'      => __( 'Gap Between Cards', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px', 'em' ),
+            'range'      => array( 'px' => array( 'min' => 0, 'max' => 40 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-cards' => 'gap: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_control( 'rn_card_bg', array(
+            'label'     => __( 'Card Background', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-card' => 'background-color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Border::get_type(), array(
+            'name'     => 'rn_card_border',
+            'selector' => '{{WRAPPER}} .asq-readnext-card',
+        ) );
+
+        $this->add_responsive_control( 'rn_card_radius', array(
+            'label'      => __( 'Card Border Radius', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-card' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}}; overflow: hidden;',
+            ),
+        ) );
+
+        $this->add_control( 'rn_card_hover_border', array(
+            'label'     => __( 'Hover Border Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-card:hover' => 'border-color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Box_Shadow::get_type(), array(
+            'name'     => 'rn_card_hover_shadow',
+            'label'    => __( 'Hover Shadow', 'apotheca-skin-quiz' ),
+            'selector' => '{{WRAPPER}} .asq-readnext-card:hover',
+        ) );
+
+        // Thumbnail
+        $this->add_control( 'rn_thumb_h', array(
+            'label'     => __( 'Thumbnail', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_responsive_control( 'rn_thumb_width', array(
+            'label'      => __( 'Thumbnail Width', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::SLIDER,
+            'size_units' => array( 'px' ),
+            'range'      => array( 'px' => array( 'min' => 48, 'max' => 200 ) ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-thumb' => 'flex: 0 0 {{SIZE}}{{UNIT}};',
+                '{{WRAPPER}} .asq-readnext-thumb img' => 'width: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        // Title
+        $this->add_control( 'rn_title_h', array(
+            'label'     => __( 'Title', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'rn_title_color', array(
+            'label'     => __( 'Title Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-title' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'rn_title_typography',
+            'selector' => '{{WRAPPER}} .asq-readnext-title',
+        ) );
+
+        // Excerpt
+        $this->add_control( 'rn_excerpt_h', array(
+            'label'     => __( 'Excerpt', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'rn_excerpt_color', array(
+            'label'     => __( 'Excerpt Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-excerpt' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'rn_excerpt_typography',
+            'selector' => '{{WRAPPER}} .asq-readnext-excerpt',
+        ) );
+
+        // Read more label
+        $this->add_control( 'rn_more_h', array(
+            'label'     => __( 'Read-More Label', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'rn_more_color', array(
+            'label'       => __( 'Label Colour', 'apotheca-skin-quiz' ),
+            'description' => __( 'Leave empty to inherit the reading accent colour.', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::COLOR,
+            'selectors'   => array(
+                '{{WRAPPER}} .asq-readnext-more' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'rn_more_typography',
+            'selector' => '{{WRAPPER}} .asq-readnext-more',
         ) );
 
         $this->end_controls_section();
