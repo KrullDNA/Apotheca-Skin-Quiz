@@ -630,6 +630,11 @@
             if (asqFrontend.consent_enabled) {
                 h += '<label class="asq-consent-label"><input type="checkbox" class="asq-consent-checkbox" value="1"><span>' + this.escHtml(asqFrontend.consent_text) + '</span></label>';
             }
+            // Honeypot: hidden from people (and screen readers), left empty by
+            // real users. Bots that auto-fill every field give themselves away.
+            h += '<div class="asq-hp" aria-hidden="true">';
+            h += '<label>Leave this field empty<input type="text" name="asq_hp" class="asq-hp-input" tabindex="-1" autocomplete="off" value=""></label>';
+            h += '</div>';
             var disabled = asqFrontend.consent_enabled ? ' disabled' : '';
             var dcls = asqFrontend.consent_enabled ? ' asq-btn-disabled' : '';
             h += '<button type="button" class="asq-btn asq-btn-primary asq-send-email' + dcls + '"' + disabled + '>' + this.escHtml(i.send_reading) + '</button>';
@@ -686,11 +691,15 @@
                     results_url: resultsUrl,
                     consent: (consentEnabled ? (ticked ? 1 : 0) : 1),
                     consent_text: consentText,
+                    asq_hp: $gate.find('.asq-hp-input').val() || '',
                     answers: JSON.stringify(self.answers),
                     followup_answers: JSON.stringify(self.followupAnswers)
                 }, function (res) {
                     if (res.success) {
                         self.unlockReading();
+                    } else if (res.data && res.data.rate_limited) {
+                        // Reached the per-IP limit: show it calmly, not as an error.
+                        $msg.text(res.data.message).css('color', '#666').show();
                     } else {
                         $msg.text(res.data && res.data.message ? res.data.message : asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
                     }

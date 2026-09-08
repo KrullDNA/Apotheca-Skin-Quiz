@@ -1180,6 +1180,16 @@ i.asq-loading-icon {
     color: var(--asq-text-light, #777);
     margin: 8px 0 0;
 }
+/* Honeypot: kept in the layout for bots to find, but off-screen and inert for
+   people. Not display:none, so naive bots still fill it. */
+.asq-hp {
+    position: absolute !important;
+    left: -9999px !important;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
 .asq-email-message {
     font-size: 14px;
     margin: 10px 0 0;
