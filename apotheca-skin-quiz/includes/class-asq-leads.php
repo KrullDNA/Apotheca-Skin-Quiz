@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class ASQ_Leads {
 
     /** Bump when the schema changes, triggers dbDelta on admin_init. */
-    const DB_VERSION = '2';
+    const DB_VERSION = '3';
 
     const PER_PAGE = 20;
 
@@ -26,6 +26,10 @@ class ASQ_Leads {
         add_action( 'admin_init', array( __CLASS__, 'maybe_install' ) );
         add_action( 'admin_menu', array( $this, 'register_menu' ) );
         add_action( 'admin_post_asq_export_leads', array( $this, 'export_csv' ) );
+
+        // The unsubscribe link works for logged-out visitors too.
+        add_action( 'admin_post_nopriv_asq_unsubscribe', array( $this, 'handle_unsubscribe' ) );
+        add_action( 'admin_post_asq_unsubscribe', array( $this, 'handle_unsubscribe' ) );
     }
 
     public static function capability() {
@@ -65,6 +69,7 @@ class ASQ_Leads {
             consent TINYINT(1) NOT NULL DEFAULT 0,
             consent_text TEXT NULL,
             source VARCHAR(255) NULL,
+            unsubscribed DATETIME NULL,
             created_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
             PRIMARY KEY  (id),
@@ -227,6 +232,71 @@ class ASQ_Leads {
         $row['findings'] = json_decode( (string) $row['findings'], true ) ?: array();
         $row['consent']  = (bool) $row['consent'];
         return $row;
+    }
+
+    /* ────────── Unsubscribe ────────── */
+
+    /**
+     * A signed unsubscribe token for a lead, so the link cannot be guessed.
+     */
+    public static function unsubscribe_token( $lead_id ) {
+        return substr( wp_hash( 'asq_unsub_' . (int) $lead_id ), 0, 20 );
+    }
+
+    /**
+     * The working unsubscribe URL for a lead.
+     */
+    public static function unsubscribe_url( $lead_id ) {
+        $lead_id = absint( $lead_id );
+        if ( ! $lead_id ) {
+            return '';
+        }
+        return add_query_arg( array(
+            'action' => 'asq_unsubscribe',
+            'lead'   => $lead_id,
+            't'      => self::unsubscribe_token( $lead_id ),
+        ), admin_url( 'admin-post.php' ) );
+    }
+
+    /**
+     * Handle an unsubscribe click: withdraw consent so nothing more is sent or
+     * pushed, then show a plain confirmation.
+     */
+    public function handle_unsubscribe() {
+        global $wpdb;
+
+        $lead_id = absint( $_GET['lead'] ?? 0 );
+        $token   = isset( $_GET['t'] ) ? sanitize_text_field( wp_unslash( $_GET['t'] ) ) : '';
+
+        if ( $lead_id && hash_equals( self::unsubscribe_token( $lead_id ), $token ) ) {
+            $wpdb->update(
+                self::leads_table(),
+                array( 'consent' => 0, 'unsubscribed' => current_time( 'mysql' ), 'updated_at' => current_time( 'mysql' ) ),
+                array( 'id' => $lead_id ),
+                array( '%d', '%s', '%s' ),
+                array( '%d' )
+            );
+
+            /**
+             * Fires when a lead unsubscribes. Connectors may hook this to
+             * withdraw the contact at their end too.
+             *
+             * @param int $lead_id
+             */
+            do_action( 'asq_lead_unsubscribed', $lead_id );
+
+            wp_die(
+                esc_html__( "You're unsubscribed. We won't email you about the skin quiz again.", 'apotheca-skin-quiz' ),
+                esc_html__( 'Unsubscribed', 'apotheca-skin-quiz' ),
+                array( 'response' => 200 )
+            );
+        }
+
+        wp_die(
+            esc_html__( 'That unsubscribe link is not valid. Please use the link in a recent email.', 'apotheca-skin-quiz' ),
+            esc_html__( 'Unsubscribe', 'apotheca-skin-quiz' ),
+            array( 'response' => 200 )
+        );
     }
 
     /* ────────── Medical gate (count only, no person data) ────────── */
