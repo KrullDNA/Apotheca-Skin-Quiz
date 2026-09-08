@@ -32,26 +32,60 @@ class ASQ_Email {
     /* ────────── Rate limiting ──────── */
 
     /**
-     * Max results emails a single IP may trigger per hour. The endpoint is
-     * open to visitors, so without a cap it could be scripted to spam
-     * arbitrary inboxes with the site's branded email.
+     * Default cap on results emails a single IP may trigger per hour, used when
+     * a quiz has no explicit setting. The endpoint is open to visitors, so
+     * without a cap it could be scripted to spam arbitrary inboxes with the
+     * site's branded email. The owner can raise, lower, or switch this off per
+     * quiz in Finder Options.
      */
     const RATE_LIMIT = 5;
 
     /**
+     * The per-hour, per-IP limit configured for a quiz. 0 means no limit.
+     */
+    public static function rate_limit_for( $finder_id ) {
+        $options = get_post_meta( absint( $finder_id ), '_asq_options', true );
+        if ( is_array( $options ) && isset( $options['rate_limit'] ) && '' !== $options['rate_limit'] ) {
+            return max( 0, (int) $options['rate_limit'] );
+        }
+        return self::RATE_LIMIT;
+    }
+
+    /**
+     * The friendly message shown when the limit is reached. Calm, not an error.
+     */
+    public static function rate_limit_message( $finder_id ) {
+        $options = get_post_meta( absint( $finder_id ), '_asq_options', true );
+        if ( is_array( $options ) && ! empty( $options['rate_limit_message'] ) ) {
+            return $options['rate_limit_message'];
+        }
+        return __( "You've asked for this a few times already. Give it a little while, then try again.", 'apotheca-skin-quiz' );
+    }
+
+    /**
      * Returns true if the current IP is within its hourly send allowance
      * (and consumes one slot); false if the limit is exhausted.
+     *
+     * The IP is only ever used as a hashed, salted bucket key in a short-lived
+     * transient. It is never stored, never logged, and never written against a
+     * lead, so nothing here identifies a person beyond the lead record itself.
      */
-    private function check_rate_limit() {
-        $ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+    private function check_rate_limit( $finder_id ) {
+        $limit = self::rate_limit_for( $finder_id );
+        if ( $limit <= 0 ) {
+            return true; // limiting switched off for this quiz
+        }
+
+        $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
         if ( ! $ip ) {
             return false;
         }
 
-        $key   = 'asq_email_rl_' . md5( $ip );
+        // Bucket per IP and per quiz, so each quiz enforces its own limit.
+        $key   = 'asq_email_rl_' . absint( $finder_id ) . '_' . substr( wp_hash( 'asq_rl_' . $ip ), 0, 20 );
         $count = (int) get_transient( $key );
 
-        if ( $count >= self::RATE_LIMIT ) {
+        if ( $count >= $limit ) {
             return false;
         }
 
@@ -110,6 +144,13 @@ class ASQ_Email {
     public function send_results_email() {
         check_ajax_referer( 'asq_frontend_nonce', 'nonce' );
 
+        // Honeypot: a decoy field no human ever sees or fills. If it carries a
+        // value it's a bot, so drop the request silently, giving no signal that
+        // it was caught, and send or store nothing.
+        if ( ! empty( $_POST['asq_hp'] ) ) {
+            wp_send_json_success( array( 'message' => __( 'Sent to your email.', 'apotheca-skin-quiz' ) ) );
+        }
+
         $email     = sanitize_email( $_POST['email'] ?? '' );
         $finder_id = absint( $_POST['finder_id'] ?? 0 );
         $results_url = esc_url_raw( $_POST['results_url'] ?? '' );
@@ -119,8 +160,13 @@ class ASQ_Email {
             wp_send_json_error( array( 'message' => __( 'Please enter a valid email address.', 'apotheca-skin-quiz' ) ) );
         }
 
-        if ( ! $this->check_rate_limit() ) {
-            wp_send_json_error( array( 'message' => __( 'Too many requests. Please try again later.', 'apotheca-skin-quiz' ) ) );
+        // Per-IP hourly cap, configurable per quiz. When reached, answer with a
+        // calm message rather than a hard error.
+        if ( ! $this->check_rate_limit( $finder_id ) ) {
+            wp_send_json_error( array(
+                'message'      => self::rate_limit_message( $finder_id ),
+                'rate_limited' => true,
+            ) );
         }
 
         $answers = json_decode( stripslashes( $_POST['answers'] ?? '[]' ), true );

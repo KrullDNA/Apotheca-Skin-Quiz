@@ -177,10 +177,12 @@ class ASQ_Admin {
     public function render_options_box( $post ) {
         $options = get_post_meta( $post->ID, '_asq_options', true );
         $options = wp_parse_args( (array) $options, array(
-            'enable_consent' => 1,
-            'consent_text'   => '',
-            'exchange_text'  => '',
-            'notify_email'   => '',
+            'enable_consent'     => 1,
+            'consent_text'       => '',
+            'exchange_text'      => '',
+            'notify_email'       => '',
+            'rate_limit'         => ASQ_Email::RATE_LIMIT,
+            'rate_limit_message' => '',
         ) );
 
         wp_nonce_field( 'asq_save_meta', 'asq_meta_nonce' );
@@ -205,6 +207,17 @@ class ASQ_Admin {
             <label><strong><?php esc_html_e( 'Notify on Completion', 'apotheca-skin-quiz' ); ?></strong></label><br>
             <input type="email" name="asq_options[notify_email]" value="<?php echo esc_attr( $options['notify_email'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'e.g. you@yourshop.com', 'apotheca-skin-quiz' ); ?>">
             <span class="description"><?php esc_html_e( 'Optional. Sends an instant lead alert to this address every time someone completes the quiz and submits their email. Leave blank to disable.', 'apotheca-skin-quiz' ); ?></span>
+        </p>
+        <hr>
+        <p>
+            <label><strong><?php esc_html_e( 'Submissions per hour, per visitor', 'apotheca-skin-quiz' ); ?></strong></label><br>
+            <input type="number" name="asq_options[rate_limit]" value="<?php echo esc_attr( $options['rate_limit'] ); ?>" min="0" step="1" style="width:100px;">
+            <span class="description"><?php esc_html_e( 'How many times one visitor may send their reading in an hour, to stop the form being scripted to spam inboxes. Set to 0 to turn the limit off.', 'apotheca-skin-quiz' ); ?></span>
+        </p>
+        <p>
+            <label><strong><?php esc_html_e( 'Limit-reached message', 'apotheca-skin-quiz' ); ?></strong></label><br>
+            <input type="text" name="asq_options[rate_limit_message]" value="<?php echo esc_attr( $options['rate_limit_message'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( "You've asked for this a few times already. Give it a little while, then try again.", 'apotheca-skin-quiz' ); ?>">
+            <span class="description"><?php esc_html_e( 'Shown calmly when a visitor hits the limit. Leave blank for the default.', 'apotheca-skin-quiz' ); ?></span>
         </p>
         <?php
     }
@@ -462,10 +475,12 @@ class ASQ_Admin {
         // Save options (consent + owner notification only).
         $raw_options = $_POST['asq_options'] ?? array();
         $options     = array(
-            'enable_consent' => ! empty( $raw_options['enable_consent'] ) ? 1 : 0,
-            'consent_text'   => sanitize_text_field( $raw_options['consent_text'] ?? '' ),
-            'exchange_text'  => sanitize_textarea_field( $raw_options['exchange_text'] ?? '' ),
-            'notify_email'   => sanitize_email( $raw_options['notify_email'] ?? '' ),
+            'enable_consent'     => ! empty( $raw_options['enable_consent'] ) ? 1 : 0,
+            'consent_text'       => sanitize_text_field( $raw_options['consent_text'] ?? '' ),
+            'exchange_text'      => sanitize_textarea_field( $raw_options['exchange_text'] ?? '' ),
+            'notify_email'       => sanitize_email( $raw_options['notify_email'] ?? '' ),
+            'rate_limit'         => isset( $raw_options['rate_limit'] ) ? max( 0, absint( $raw_options['rate_limit'] ) ) : ASQ_Email::RATE_LIMIT,
+            'rate_limit_message' => sanitize_text_field( $raw_options['rate_limit_message'] ?? '' ),
         );
         update_post_meta( $post_id, '_asq_options', $options );
 
