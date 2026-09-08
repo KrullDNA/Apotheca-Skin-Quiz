@@ -107,44 +107,80 @@ class ASQ_Config {
         return $readable;
     }
 
+    /* ────────── lookups used by the findings engine ────────── */
+
+    /** @var array|null Cached map of question id => config index. */
+    protected static $index_by_id = null;
+
     /**
-     * Map a set of answers to the findings those answers contribute to.
-     *
-     * This is NOT the findings engine. It is the union of the per-answer
-     * finding arrows from the brief, used only by the Stage 4 placeholder so
-     * the result screen shows which findings are in play. Priority,
-     * suppression and the real firing rules arrive with the engine.
+     * Map each question's short id (Q1, Q2, …) to its position in the config.
+     */
+    public static function question_index_by_id() {
+        if ( null === self::$index_by_id ) {
+            self::$index_by_id = array();
+            foreach ( self::questions() as $i => $q ) {
+                if ( ! empty( $q['id'] ) ) {
+                    self::$index_by_id[ $q['id'] ] = $i;
+                }
+            }
+        }
+        return self::$index_by_id;
+    }
+
+    /**
+     * Convert raw answer indices into the option keys the rules refer to.
      *
      * @param array $answers { questionIndex => [answerIndex, …] }
-     * @return array Ordered list of [ 'id' => 'F5', 'label' => '…' ].
+     * @return array { 'Q1' => ['D'], 'Q10' => ['A','C'], … }
      */
-    public static function map_findings( $answers ) {
+    public static function selected_keys( $answers ) {
         $questions = self::questions();
-        $hit       = array();
+        $out       = array();
 
         foreach ( (array) $answers as $qi => $selected ) {
             $qi = (int) $qi;
             if ( ! isset( $questions[ $qi ] ) ) {
                 continue;
             }
+            $qid  = ! empty( $questions[ $qi ]['id'] ) ? $questions[ $qi ]['id'] : 'Q' . ( $qi + 1 );
+            $keys = array();
             foreach ( (array) $selected as $ai ) {
-                $ai  = (int) $ai;
-                $ans = isset( $questions[ $qi ]['answers'][ $ai ] ) ? $questions[ $qi ]['answers'][ $ai ] : null;
-                if ( $ans && ! empty( $ans['findings'] ) ) {
-                    foreach ( $ans['findings'] as $fid ) {
-                        $hit[ $fid ] = true;
-                    }
+                $ai = (int) $ai;
+                if ( isset( $questions[ $qi ]['answers'][ $ai ]['key'] ) ) {
+                    $keys[] = $questions[ $qi ]['answers'][ $ai ]['key'];
                 }
             }
-        }
-
-        // Return in the canonical finding order from the config.
-        $out = array();
-        foreach ( self::findings() as $id => $label ) {
-            if ( isset( $hit[ $id ] ) ) {
-                $out[] = array( 'id' => $id, 'label' => $label );
-            }
+            $out[ $qid ] = $keys;
         }
         return $out;
+    }
+
+    /**
+     * The text of a question, by its short id.
+     */
+    public static function question_text_by_id( $qid ) {
+        $map = self::question_index_by_id();
+        if ( ! isset( $map[ $qid ] ) ) {
+            return '';
+        }
+        $q = self::questions()[ $map[ $qid ] ];
+        return isset( $q['text'] ) ? $q['text'] : '';
+    }
+
+    /**
+     * The text of one answer, by its question id and option key.
+     */
+    public static function answer_text( $qid, $key ) {
+        $map = self::question_index_by_id();
+        if ( ! isset( $map[ $qid ] ) ) {
+            return '';
+        }
+        $q = self::questions()[ $map[ $qid ] ];
+        foreach ( $q['answers'] as $a ) {
+            if ( isset( $a['key'] ) && $a['key'] === $key ) {
+                return $a['text'];
+            }
+        }
+        return '';
     }
 }

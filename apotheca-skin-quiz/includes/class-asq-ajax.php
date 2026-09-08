@@ -68,10 +68,11 @@ class ASQ_Ajax {
         // Never expose the owner's notification address to visitors.
         unset( $options['notify_email'] );
 
-        // Placeholder result: the findings the chosen answers map to, plus the
-        // readable answers behind them. The real firing rules, priority and
-        // suppression arrive with the engine in a later stage.
-        $findings = ASQ_Config::map_findings( (array) $answers );
+        // Run the findings engine: an ordered array of fired findings, each
+        // with the answers that triggered it. Phrasing and the medical-gate
+        // behaviour arrive in later stages; for now the result screen lists
+        // the fired findings.
+        $findings = ASQ_Engine::evaluate( (array) $answers );
         $readable = ASQ_Config::resolve_answers( (array) $answers );
 
         wp_send_json_success( array(
