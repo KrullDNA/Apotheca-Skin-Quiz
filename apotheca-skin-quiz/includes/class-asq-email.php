@@ -148,15 +148,36 @@ class ASQ_Email {
             wp_send_json_error( array( 'message' => __( 'Failed to send email. Please try again.', 'apotheca-skin-quiz' ) ) );
         }
 
-        // Normal path: resolve the answers into readable question/answer text.
+        // Normal path. The one consent covers the emailed reading and
+        // marketing, so without it we store nothing and send nothing.
+        if ( ! $consent ) {
+            wp_send_json_error( array( 'message' => __( 'Please tick the box so we can send your reading.', 'apotheca-skin-quiz' ) ) );
+        }
+
+        // The exact consent wording shown, and the page she came from.
+        $consent_text = isset( $_POST['consent_text'] ) ? sanitize_textarea_field( wp_unslash( $_POST['consent_text'] ) ) : '';
+        $source_id    = absint( $_POST['source_id'] ?? 0 );
+        $source       = $source_id ? get_permalink( $source_id ) : $results_url;
+
+        // Recompute the findings on the server, so what is stored and pushed is
+        // trustworthy, then resolve the answers to readable text.
+        $findings = ASQ_Engine::evaluate( $answers );
         $readable = ASQ_Config::resolve_answers( $answers );
 
+        // Store the submission, joined to the lead by email. This fires
+        // asq_lead_recorded, which queues the connector push (findings as
+        // fields) for a consented lead.
+        ASQ_Leads::capture( array(
+            'finder_id'    => $finder_id,
+            'email'        => $email,
+            'consent'      => $consent,
+            'consent_text' => $consent_text,
+            'source'       => $source,
+            'answers'      => $readable,
+            'findings'     => $findings,
+        ) );
+
         $body = $this->build_email_body( $finder_id, $finder_title, $readable, $results_url, $email_styles );
-
-        // Record the lead before sending – the visitor completed the quiz and
-        // gave their address regardless of whether the mail server cooperates.
-        $this->record_lead( $finder_id, $email, $consent, $readable );
-
         $sent = wp_mail( $email, $subject, $body, $headers );
 
         $this->notify_owner( $finder_id, $finder_title, $email, $consent );
@@ -208,17 +229,6 @@ class ASQ_Email {
             'email_subject'   => '',
             'footer_text'     => '',
         ) );
-    }
-
-    /**
-     * Store the submission in the leads table with readable answers.
-     * Products are gone, so the products column is stored empty.
-     */
-    private function record_lead( $finder_id, $email, $consent, $readable_answers ) {
-        if ( ! class_exists( 'ASQ_Leads' ) ) {
-            return false;
-        }
-        return ASQ_Leads::add_lead( $finder_id, $email, $consent, $readable_answers, array() );
     }
 
     /**

@@ -32,7 +32,6 @@
         this.$progress      = $el.find('.asq-progress-fill');
         this.$progressText  = $el.find('.asq-progress-text');
         this.$container     = $el.find('.asq-questions-container');
-        this.$emailScreen   = $el.find('.asq-email-screen');
         this.$loadingScreen = $el.find('.asq-loading-screen');
         this.$resultsScreen = $el.find('.asq-results-screen');
 
@@ -66,10 +65,6 @@
 
         applyI18n: function () {
             var i = asqFrontend.i18n;
-            this.$emailScreen.find('.asq-email-title').text(i.email_label);
-            this.$emailScreen.find('.asq-email-input').attr('placeholder', i.email_placeholder);
-            this.$emailScreen.find('.asq-send-email').text(i.send_results);
-            this.$emailScreen.find('.asq-skip-email').text(i.skip_email);
 
             // Custom heading overrides from Elementor widget data attributes
             var customLoading = this.$el.data('loading-heading');
@@ -121,21 +116,29 @@
                 self.transitionOut(function () { self.goBack(); });
             });
 
-            this.$el.on('click', '.asq-skip-email', function () {
-                self.showLoading();
-            });
-
             this.$el.on('click', '.asq-send-email', function () {
                 self.sendEmail();
+            });
+
+            // Enable the submit only once consent is ticked, and say why.
+            this.$el.on('change', '.asq-consent-checkbox', function () {
+                self.syncConsent();
             });
 
             this.$el.on('click', '.asq-start-over', function () {
                 self.startOver();
             });
+        },
 
-            this.$el.on('click', '.asq-btn-view-results', function () {
-                self.showLoading();
-            });
+        // Reflect the consent checkbox state on the submit button and hint.
+        syncConsent: function () {
+            var $gate = this.$el.find('.asq-gate');
+            if (!$gate.length) return;
+            var ticked = $gate.find('.asq-consent-checkbox').is(':checked');
+            var required = asqFrontend.consent_enabled;
+            var ok = ticked || !required;
+            $gate.find('.asq-send-email').prop('disabled', !ok).toggleClass('asq-btn-disabled', !ok);
+            $gate.find('.asq-consent-hint').css('visibility', ok ? 'hidden' : 'visible');
         },
 
         /* ───────── Render question ───────── */
@@ -156,6 +159,11 @@
 
             var hasImages = q.answers.some(function (a) { return !!a.image; });
             var html = '<div class="asq-question-slide" data-qi="' + idx + '">';
+
+            // State the exchange up front, on the first question.
+            if (idx === 0 && asqFrontend.exchange_text) {
+                html += '<p class="asq-exchange-note">' + this.escHtml(asqFrontend.exchange_text) + '</p>';
+            }
 
             var instructionText = q.instruction || (q.multiple ? 'Select all that apply' : 'Select one option');
 
@@ -522,38 +530,73 @@
         // Reached the end of the questions.
         finish: function () {
             if (this.isGated()) {
-                // The medical gate replaces the normal path: no email screen,
+                // The medical gate replaces the normal path: no email gate,
                 // no reading. Don't leave the medical selections in the browser.
                 this.clearState();
                 this.recordGate();
-                this.showLoading();
-                return;
             }
-            this.showEmail();
+            this.showLoading();
         },
 
-        /* ───────── Email screen ───────── */
+        /* ───────── First-party unlock cookie ───────── */
 
-        showEmail: function () {
-            this.view = 'email';
-            this.updateProgress();
-            this.$container.hide();
-            this.$emailScreen.fadeIn(300);
+        cookieName: function () {
+            return 'asq_unlocked_' + this.finderId;
+        },
+
+        isUnlocked: function () {
+            return new RegExp('(?:^|; )' + this.cookieName() + '=1').test(document.cookie);
+        },
+
+        setUnlocked: function () {
+            var days = parseInt(asqFrontend.cookie_days, 10) || 180;
+            var d = new Date();
+            d.setTime(d.getTime() + days * 864e5);
+            document.cookie = this.cookieName() + '=1; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
+        },
+
+        /* ───────── Email gate ───────── */
+
+        // Build the inline gate form that sits between the first section and
+        // the rest of the reading.
+        gateHtml: function () {
+            var i = asqFrontend.i18n;
+            var h = '<div class="asq-gate">';
+            h += '<p class="asq-gate-lead">' + this.escHtml(i.email_gate_lead) + '</p>';
+            h += '<div class="asq-gate-form">';
+            h += '<input type="email" class="asq-email-input" placeholder="' + this.escHtml(i.email_placeholder) + '">';
+            if (asqFrontend.consent_enabled) {
+                h += '<label class="asq-consent-label"><input type="checkbox" class="asq-consent-checkbox" value="1"><span>' + this.escHtml(asqFrontend.consent_text) + '</span></label>';
+            }
+            var disabled = asqFrontend.consent_enabled ? ' disabled' : '';
+            var dcls = asqFrontend.consent_enabled ? ' asq-btn-disabled' : '';
+            h += '<button type="button" class="asq-btn asq-btn-primary asq-send-email' + dcls + '"' + disabled + '>' + this.escHtml(i.send_reading) + '</button>';
+            h += '<p class="asq-consent-hint">' + this.escHtml(i.consent_hint) + '</p>';
+            h += '<div class="asq-email-message" style="display:none;"></div>';
+            h += '</div></div>';
+            return h;
         },
 
         sendEmail: function () {
             var self  = this;
-            var email = this.$emailScreen.find('.asq-email-input').val().trim();
-            var $msg  = this.$emailScreen.find('.asq-email-message');
+            var $gate = this.$el.find('.asq-gate');
+            var email = $gate.find('.asq-email-input').val().trim();
+            var $msg  = $gate.find('.asq-email-message');
+            var consentEnabled = asqFrontend.consent_enabled;
+            var ticked = $gate.find('.asq-consent-checkbox').is(':checked');
 
             if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 $msg.text('Please enter a valid email.').css('color', '#b32d2e').show();
                 return;
             }
+            if (consentEnabled && !ticked) {
+                $msg.text(asqFrontend.i18n.consent_hint).css('color', '#b32d2e').show();
+                return;
+            }
 
             $msg.text('Sending…').css('color', '#666').show();
 
-            // Step 1: Save the session so the results have a shareable URL.
+            // Save the session first, so the emailed link shows the full reading.
             $.post(asqFrontend.ajax_url, {
                 action: 'asq_save_results_session',
                 nonce: asqFrontend.nonce,
@@ -561,38 +604,48 @@
                 answers: JSON.stringify(self.answers),
                 followup_answers: JSON.stringify(self.followupAnswers)
             }, function (sessionRes) {
-                if (!sessionRes.success) {
-                    $msg.text(asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
-                    return;
+                var resultsUrl = '';
+                if (sessionRes.success) {
+                    var token = sessionRes.data.token;
+                    var baseUrl = asqFrontend.page_url || window.location.href.split('?')[0];
+                    var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
+                    resultsUrl = baseUrl + sep + 'asq_results=' + encodeURIComponent(token);
                 }
 
-                var token = sessionRes.data.token;
-                var baseUrl = asqFrontend.page_url || window.location.href.split('?')[0];
-                var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
-                var resultsUrl = baseUrl + sep + 'asq_results=' + encodeURIComponent(token);
+                // The exact consent wording shown, so the server stores it.
+                var consentText = $gate.find('.asq-consent-label span').text() || asqFrontend.consent_text;
 
-                var consent = self.$emailScreen.find('.asq-consent-checkbox').is(':checked') ? 1 : 0;
-
-                // Step 2: Send the branded result email (answers only, no products).
                 $.post(asqFrontend.ajax_url, {
                     action: 'asq_send_results_email',
                     nonce: asqFrontend.nonce,
                     finder_id: self.finderId,
+                    source_id: asqFrontend.source_id,
                     email: email,
                     results_url: resultsUrl,
-                    consent: consent,
+                    consent: (consentEnabled ? (ticked ? 1 : 0) : 1),
+                    consent_text: consentText,
                     answers: JSON.stringify(self.answers),
                     followup_answers: JSON.stringify(self.followupAnswers)
                 }, function (res) {
                     if (res.success) {
-                        // Quiz is done; clear the saved progress before leaving.
-                        self.clearState();
-                        window.location.href = resultsUrl;
+                        self.unlockReading();
                     } else {
                         $msg.text(res.data && res.data.message ? res.data.message : asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
                     }
+                }).fail(function () {
+                    $msg.text(asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
                 });
             });
+        },
+
+        // Reveal the rest of the reading and remember this device.
+        unlockReading: function () {
+            this.setUnlocked();
+            this.clearState();
+            var $gate = this.$el.find('.asq-gate');
+            $gate.find('.asq-gate-form').hide();
+            $gate.find('.asq-gate-lead').text(asqFrontend.i18n.sent_confirm);
+            this.$resultsScreen.find('.asq-reading-rest').slideDown(300);
         },
 
         /**
@@ -604,7 +657,6 @@
 
             // Hide quiz UI, show loading.
             this.$container.hide();
-            this.$emailScreen.hide();
             this.$el.find('.asq-progress-bar-wrap').hide();
             this.$loadingScreen.fadeIn(300);
 
@@ -641,7 +693,6 @@
 
         showLoading: function () {
             var self = this;
-            this.$emailScreen.hide();
             this.$container.hide();
             this.$loadingScreen.fadeIn(300);
 
@@ -683,51 +734,45 @@
             });
         },
 
-        /* ───────── Results screen (Stage 3 placeholder) ───────── */
+        /* ───────── Results screen ───────── */
 
         showResults: function (data) {
             this.$loadingScreen.hide();
             this._cachedResults = data;
 
-            // The medical gate response stands alone, so drop the results
-            // title above it; a normal reading keeps it.
-            var $title = this.$resultsScreen.find('.asq-results-title');
-            if (data.is_gate) { $title.hide(); } else { $title.show(); }
+            var $title     = this.$resultsScreen.find('.asq-results-title');
+            var $container = this.$resultsScreen.find('.asq-results-container');
 
-            // Prefer the server-rendered reading; fall back to a plain finding
-            // list if it is missing for any reason.
-            var readingHtml = (data.reading_html || '').trim();
-            if (readingHtml) {
-                this.$resultsScreen.find('.asq-results-container').html(readingHtml);
+            if (data.is_gate) {
+                // The medical gate response stands alone.
+                $title.hide();
+                $container.html((data.reading_html || '').trim());
             } else {
-                this.renderFindings(data.findings || []);
+                $title.show();
+                // A reading in two parts: the first section is always shown; the
+                // rest sits behind the email gate unless she is already unlocked
+                // (came from her emailed link, or has the returning-visitor cookie).
+                var intro = (data.reading_intro_html || '').trim();
+                var rest  = (data.reading_rest_html || '').trim();
+                var unlocked = !!asqFrontend.results_token || this.isUnlocked();
+
+                var html = '<div class="asq-reading">';
+                html += intro;
+                if (!unlocked && rest) {
+                    html += this.gateHtml();
+                    html += '<div class="asq-reading-rest" style="display:none;">' + rest + '</div>';
+                } else {
+                    html += '<div class="asq-reading-rest">' + rest + '</div>';
+                }
+                html += '</div>';
+                $container.html(html);
+                this.syncConsent();
             }
 
             // Reveal the results screen and announce it to screen readers.
             this.$resultsScreen.attr('aria-live', 'polite');
             this.$resultsScreen.css({ opacity: 0, display: 'block' });
             this.$resultsScreen.animate({ opacity: 1 }, 300);
-        },
-
-        /**
-         * Placeholder result: render the findings the answers map to. The real
-         * written reading arrives with the findings engine in a later stage.
-         */
-        renderFindings: function (findings) {
-            var html = '<div class="asq-findings-readout">';
-            if (findings && findings.length) {
-                for (var i = 0; i < findings.length; i++) {
-                    var f = findings[i] || {};
-                    html += '<div class="asq-finding-readout-row">';
-                    html += '<span class="asq-finding-readout-id">' + this.escHtml(f.id || '') + '</span>';
-                    html += '<span class="asq-finding-readout-label">' + this.escHtml(f.label || '') + '</span>';
-                    html += '</div>';
-                }
-            } else {
-                html += '<p>' + this.escHtml('No findings mapped to your answers yet.') + '</p>';
-            }
-            html += '</div>';
-            this.$resultsScreen.find('.asq-results-container').html(html);
         },
 
         /* ───────── Start over ───────── */
@@ -741,14 +786,8 @@
             this._cachedResults = null;
 
             this.$resultsScreen.hide().css('opacity', '');
-            this.$emailScreen.hide();
+            this.$resultsScreen.find('.asq-results-container').empty();
             this.$loadingScreen.hide();
-
-            // Reset email screen
-            this.$emailScreen.find('.asq-email-input').val('');
-            this.$emailScreen.find('.asq-consent-checkbox').prop('checked', false);
-            this.$emailScreen.find('.asq-email-message').hide();
-            this.$emailScreen.find('.asq-btn-view-results').text(asqFrontend.i18n.send_results).removeClass('asq-btn-view-results').addClass('asq-send-email');
 
             // Remove asq_results from URL if present.
             if (window.history && window.history.replaceState) {
@@ -801,10 +840,7 @@
             this.view            = s.view || 'question';
 
             var top = this.history[this.history.length - 1];
-            if (this.view === 'email') {
-                this.$container.show();
-                this.showEmail();
-            } else if (top && top.type === 'followup') {
+            if (top && top.type === 'followup') {
                 this.renderFollowupQuestion(top.qi, top.ai);
                 this.updateProgress();
             } else {

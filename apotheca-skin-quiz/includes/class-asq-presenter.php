@@ -139,22 +139,58 @@ class ASQ_Presenter {
 
         $html = '<div class="asq-reading">';
         foreach ( $reading['sections'] as $section ) {
-            $html .= '<section class="asq-reading-section asq-reading-section--' . esc_attr( $section['key'] ) . '">';
-            $html .= '<h3 class="asq-reading-heading">' . esc_html( self::texturize( $section['heading'] ) ) . '</h3>';
-
-            if ( 'read_next' === $section['key'] ) {
-                if ( ! empty( $section['intro'] ) ) {
-                    $html .= '<p class="asq-reading-p asq-readnext-intro">' . esc_html( self::texturize( $section['intro'] ) ) . '</p>';
-                }
-                $html .= self::render_articles( $section['articles'] );
-            } else {
-                foreach ( $section['paragraphs'] as $para ) {
-                    $html .= '<p class="asq-reading-p">' . $para . '</p>';
-                }
-            }
-            $html .= '</section>';
+            $html .= self::render_section( $section );
         }
         $html .= '</div>';
+        return $html;
+    }
+
+    /**
+     * Render the reading split for the email gate: the first section on its
+     * own, and the rest (with read-next) as a separate fragment the front end
+     * puts behind the form. A gate reading is not split.
+     *
+     * @return array is_gate => bool; for a gate: html; otherwise intro, rest.
+     */
+    public static function render_split( $findings, $answers, $articles = array() ) {
+        $reading = self::build_reading( $findings, $answers, $articles );
+
+        if ( ! empty( $reading['is_gate'] ) ) {
+            return array( 'is_gate' => true, 'html' => self::render_html( $reading ) );
+        }
+
+        $sections = $reading['sections'];
+        $intro    = '';
+        $rest     = '';
+        foreach ( $sections as $i => $section ) {
+            if ( 0 === $i ) {
+                $intro .= self::render_section( $section );
+            } else {
+                $rest .= self::render_section( $section );
+            }
+        }
+
+        return array( 'is_gate' => false, 'intro' => $intro, 'rest' => $rest );
+    }
+
+    /**
+     * Render one section (heading plus paragraphs, or the read-next cards).
+     */
+    protected static function render_section( $section ) {
+        $html  = '<section class="asq-reading-section asq-reading-section--' . esc_attr( $section['key'] ) . '">';
+        $html .= '<h3 class="asq-reading-heading">' . esc_html( self::texturize( $section['heading'] ) ) . '</h3>';
+
+        if ( 'read_next' === $section['key'] ) {
+            if ( ! empty( $section['intro'] ) ) {
+                $html .= '<p class="asq-reading-p asq-readnext-intro">' . esc_html( self::texturize( $section['intro'] ) ) . '</p>';
+            }
+            $html .= self::render_articles( $section['articles'] );
+        } else {
+            foreach ( $section['paragraphs'] as $para ) {
+                $html .= '<p class="asq-reading-p">' . $para . '</p>';
+            }
+        }
+        $html .= '</section>';
         return $html;
     }
 

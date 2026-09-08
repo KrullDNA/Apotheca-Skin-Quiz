@@ -55,11 +55,19 @@ class ASQ_Frontend {
         $options = wp_parse_args( (array) $options, array(
             'enable_consent' => 1,
             'consent_text'   => '',
+            'exchange_text'  => '',
         ) );
 
+        // Consent wording matches the Ingredient List Decoder so a person who
+        // meets both tools is asked in the same words.
         $consent_text = ! empty( $options['consent_text'] )
             ? $options['consent_text']
-            : __( "I'd like to receive news and offers", 'apotheca-skin-quiz' );
+            : __( 'Yes, email me my result and send me skincare thinking and news from Apotheca®.', 'apotheca-skin-quiz' );
+
+        // The exchange, stated up front near the first question.
+        $exchange_text = ! empty( $options['exchange_text'] )
+            ? $options['exchange_text']
+            : __( "At the end, add your email to see your full reading. We'll send you a copy and the odd note worth reading. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' );
 
         wp_enqueue_style( 'asq-frontend' );
         wp_enqueue_script( 'asq-frontend' );
@@ -82,20 +90,23 @@ class ASQ_Frontend {
             'source_id'     => (int) get_the_ID(),
             'results_token' => $results_token,
             'gate'          => ASQ_Config::gate_meta(),
+            'consent_enabled' => ! empty( $options['enable_consent'] ),
+            'consent_text'    => $consent_text,
+            'exchange_text'   => $exchange_text,
+            'cookie_days'     => 180,
             'i18n'          => array(
-                'next'         => __( 'Continue', 'apotheca-skin-quiz' ),
-                'back'         => __( 'Back', 'apotheca-skin-quiz' ),
-                'skip_email'   => __( 'Skip & View Results', 'apotheca-skin-quiz' ),
-                'send_results' => __( 'Send Results', 'apotheca-skin-quiz' ),
-                'view_results' => __( 'View Results', 'apotheca-skin-quiz' ),
-                'loading'      => __( 'Reading your answers…', 'apotheca-skin-quiz' ),
-                'email_label'  => __( 'Get your results sent to your inbox', 'apotheca-skin-quiz' ),
+                'next'              => __( 'Continue', 'apotheca-skin-quiz' ),
+                'back'              => __( 'Back', 'apotheca-skin-quiz' ),
+                'loading'           => __( 'Reading your answers…', 'apotheca-skin-quiz' ),
                 'email_placeholder' => __( 'Enter your email address', 'apotheca-skin-quiz' ),
-                'email_success'=> __( 'Results sent!', 'apotheca-skin-quiz' ),
-                'email_fail'   => __( 'Failed to send. Please try again.', 'apotheca-skin-quiz' ),
-                'your_results' => __( 'What your answers point to', 'apotheca-skin-quiz' ),
-                'start_over'   => __( 'Start Over', 'apotheca-skin-quiz' ),
-                'complete'     => __( 'Complete', 'apotheca-skin-quiz' ),
+                'email_fail'        => __( 'Failed to send. Please try again.', 'apotheca-skin-quiz' ),
+                'email_gate_lead'   => __( 'See the rest of your reading', 'apotheca-skin-quiz' ),
+                'send_reading'      => __( 'Email me my reading', 'apotheca-skin-quiz' ),
+                'consent_hint'      => __( 'Tick the box so we can send it.', 'apotheca-skin-quiz' ),
+                'sent_confirm'      => __( "Sent. Here's the rest of your reading.", 'apotheca-skin-quiz' ),
+                'your_results'      => __( 'Your reading', 'apotheca-skin-quiz' ),
+                'start_over'        => __( 'Start over', 'apotheca-skin-quiz' ),
+                'complete'          => __( 'Complete', 'apotheca-skin-quiz' ),
             ),
         ) );
 
@@ -135,26 +146,6 @@ class ASQ_Frontend {
 
             <!-- Questions container -->
             <div class="asq-questions-container"></div>
-
-            <!-- Email capture screen -->
-            <div class="asq-email-screen" style="display:none;">
-                <div class="asq-email-inner">
-                    <h3 class="asq-email-title"></h3>
-                    <p class="asq-email-desc"></p>
-                    <div class="asq-email-form">
-                        <input type="email" class="asq-email-input" placeholder="">
-                        <button type="button" class="asq-btn asq-btn-primary asq-send-email"></button>
-                    </div>
-                    <?php if ( ! empty( $options['enable_consent'] ) ) : ?>
-                        <label class="asq-consent-label">
-                            <input type="checkbox" class="asq-consent-checkbox" value="1">
-                            <span><?php echo esc_html( $consent_text ); ?></span>
-                        </label>
-                    <?php endif; ?>
-                    <button type="button" class="asq-btn asq-btn-link asq-skip-email"></button>
-                    <div class="asq-email-message" style="display:none;"></div>
-                </div>
-            </div>
 
             <!-- Loading screen -->
             <div class="asq-loading-screen" style="display:none;">

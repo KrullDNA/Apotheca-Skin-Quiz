@@ -105,17 +105,16 @@ class ASQ_Ajax {
             ) );
         }
 
-        // Normal reading, with up to three read-next articles.
-        $articles     = ASQ_Read_Next::for_findings( $findings, $source_id );
-        $reading_html = ASQ_Presenter::render( $findings, (array) $answers, $articles );
-        $readable     = ASQ_Config::resolve_answers( (array) $answers );
+        // Normal reading, with up to three read-next articles, split so the
+        // first section shows and the rest sits behind the email gate.
+        $articles = ASQ_Read_Next::for_findings( $findings, $source_id );
+        $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles );
 
         wp_send_json_success( array(
-            'is_gate'      => false,
-            'reading_html' => $reading_html,
-            'findings'     => $findings,
-            'answers'      => $readable,
-            'options'      => $options,
+            'is_gate'           => false,
+            'reading_intro_html' => $split['intro'],
+            'reading_rest_html'  => $split['rest'],
+            'options'            => $options,
         ) );
     }
 }

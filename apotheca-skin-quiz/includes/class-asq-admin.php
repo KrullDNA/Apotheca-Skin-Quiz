@@ -179,6 +179,7 @@ class ASQ_Admin {
         $options = wp_parse_args( (array) $options, array(
             'enable_consent' => 1,
             'consent_text'   => '',
+            'exchange_text'  => '',
             'notify_email'   => '',
         ) );
 
@@ -189,11 +190,16 @@ class ASQ_Admin {
                 <input type="checkbox" name="asq_options[enable_consent]" value="1" <?php checked( $options['enable_consent'], 1 ); ?>>
                 <strong><?php esc_html_e( 'Marketing Consent Checkbox', 'apotheca-skin-quiz' ); ?></strong>
             </label>
-            <span class="description"><?php esc_html_e( 'Show an opt-in checkbox on the email screen. The choice is saved with each submission.', 'apotheca-skin-quiz' ); ?></span>
+            <span class="description"><?php esc_html_e( 'Show the required opt-in checkbox on the email gate. The choice, and the exact wording shown, is saved with each submission.', 'apotheca-skin-quiz' ); ?></span>
         </p>
         <p>
             <label><strong><?php esc_html_e( 'Consent Label', 'apotheca-skin-quiz' ); ?></strong></label><br>
-            <input type="text" name="asq_options[consent_text]" value="<?php echo esc_attr( $options['consent_text'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( "I'd like to receive news and offers", 'apotheca-skin-quiz' ); ?>">
+            <input type="text" name="asq_options[consent_text]" value="<?php echo esc_attr( $options['consent_text'] ); ?>" class="widefat" placeholder="<?php esc_attr_e( 'Yes, email me my result and send me skincare thinking and news from Apotheca®.', 'apotheca-skin-quiz' ); ?>">
+            <span class="description"><?php esc_html_e( 'Leave blank to match the Ingredient List Decoder wording.', 'apotheca-skin-quiz' ); ?></span>
+        </p>
+        <p>
+            <label><strong><?php esc_html_e( 'Exchange Text', 'apotheca-skin-quiz' ); ?></strong></label><br>
+            <textarea name="asq_options[exchange_text]" rows="3" class="widefat" placeholder="<?php esc_attr_e( 'Shown near the first question, stating the email exchange. Leave blank for the default.', 'apotheca-skin-quiz' ); ?>"><?php echo esc_textarea( $options['exchange_text'] ); ?></textarea>
         </p>
         <p>
             <label><strong><?php esc_html_e( 'Notify on Completion', 'apotheca-skin-quiz' ); ?></strong></label><br>
@@ -458,6 +464,7 @@ class ASQ_Admin {
         $options     = array(
             'enable_consent' => ! empty( $raw_options['enable_consent'] ) ? 1 : 0,
             'consent_text'   => sanitize_text_field( $raw_options['consent_text'] ?? '' ),
+            'exchange_text'  => sanitize_textarea_field( $raw_options['exchange_text'] ?? '' ),
             'notify_email'   => sanitize_email( $raw_options['notify_email'] ?? '' ),
         );
         update_post_meta( $post_id, '_asq_options', $options );
