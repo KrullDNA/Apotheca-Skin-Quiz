@@ -46,6 +46,7 @@ final class Apotheca_Skin_Quiz {
     private function includes() {
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-config.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-engine.php';
+        require_once ASQ_PLUGIN_DIR . 'includes/class-asq-presenter.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-post-type.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-admin.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-frontend.php';

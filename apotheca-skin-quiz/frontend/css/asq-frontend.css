@@ -1076,6 +1076,51 @@ i.asq-loading-icon {
     display: block;
 }
 
+/* === The reading === */
+.asq-reading {
+    max-width: 680px;
+    margin: 0 auto;
+    text-align: left;
+}
+.asq-reading-section {
+    margin: 0 0 28px;
+}
+.asq-reading-section:last-child {
+    margin-bottom: 0;
+}
+.asq-reading-heading {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--asq-text-light, #666);
+    margin: 0 0 10px;
+}
+.asq-reading-p {
+    font-size: 17px;
+    line-height: 1.6;
+    color: var(--asq-text, #333);
+    margin: 0 0 14px;
+}
+.asq-reading-p:last-child {
+    margin-bottom: 0;
+}
+/* Emphasised reframe phrase. The accent is overridable (Stage 11 / Elementor);
+   the default is simply a heavier weight so it stays on-brand. */
+.asq-reading-em {
+    font-weight: 600;
+    color: var(--asq-reading-accent, inherit);
+}
+/* The medical gate reading, styled calmly rather than as an alert. */
+.asq-reading--gate .asq-reading-heading--gate {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--asq-text, #333);
+    letter-spacing: 0;
+}
+.asq-reading--gate .asq-reading-p {
+    font-size: 17px;
+}
+
 /* === Placeholder result: mapped findings readout === */
 .asq-findings-readout {
     margin: 0 auto;

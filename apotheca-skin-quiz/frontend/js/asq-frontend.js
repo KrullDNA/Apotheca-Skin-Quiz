@@ -649,7 +649,14 @@
             this.$loadingScreen.hide();
             this._cachedResults = data;
 
-            this.renderFindings(data.findings || []);
+            // Prefer the server-rendered reading; fall back to a plain finding
+            // list if it is missing for any reason.
+            var readingHtml = (data.reading_html || '').trim();
+            if (readingHtml) {
+                this.$resultsScreen.find('.asq-results-container').html(readingHtml);
+            } else {
+                this.renderFindings(data.findings || []);
+            }
 
             // Reveal the results screen and announce it to screen readers.
             this.$resultsScreen.attr('aria-live', 'polite');

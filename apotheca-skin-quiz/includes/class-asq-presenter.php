@@ -1,0 +1,203 @@
+<?php
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+/**
+ * Turns the engine's fired findings into the reading.
+ *
+ * Four sections in fixed order: what you're describing, what it probably
+ * isn't, one or two things worth trying, and read next. Each fired finding
+ * contributes copy from the phrasing file to one or more sections. Every
+ * sentence lives in asq-phrasing.php; this class only assembles and renders.
+ *
+ * All copy here is authored by us or drawn from the fixed question config, so
+ * there is no visitor free text in the reading. The emphasis spans are ours.
+ */
+class ASQ_Presenter {
+
+    /** @var array|null Cached phrasing. */
+    protected static $phrasing = null;
+
+    /** Max entries in the "one or two things worth trying" section. */
+    const MAX_TRIES = 2;
+
+    public static function phrasing() {
+        if ( null === self::$phrasing ) {
+            self::$phrasing = require ASQ_PLUGIN_DIR . 'includes/asq-phrasing.php';
+        }
+        return self::$phrasing;
+    }
+
+    /**
+     * Build the reading from the engine output.
+     *
+     * @param array $findings Engine output (ordered, each with id/label/triggers).
+     * @param array $answers  { questionIndex => [answerIndex, …] }
+     * @return array Either a gate reading ( is_gate => true, heading, body )
+     *               or a normal reading ( is_gate => false, sections => [...] ).
+     */
+    public static function build_reading( $findings, $answers ) {
+        $p    = self::phrasing();
+        $amap = self::answer_map( $answers );
+
+        // The medical gate replaces the whole reading.
+        foreach ( (array) $findings as $f ) {
+            if ( isset( $f['id'] ) && 'F11' === $f['id'] ) {
+                return array(
+                    'is_gate' => true,
+                    'heading' => $p['gate']['heading'],
+                    'body'    => self::resolve( $p['gate']['body'], $amap ),
+                );
+            }
+        }
+
+        $fp = isset( $p['findings'] ) ? $p['findings'] : array();
+
+        $describing = array();
+        $probably   = array();
+        $tries      = array();
+        $seen_try   = array();
+
+        foreach ( (array) $findings as $f ) {
+            $id = isset( $f['id'] ) ? $f['id'] : '';
+            if ( ! isset( $fp[ $id ] ) ) {
+                continue;
+            }
+            $copy = $fp[ $id ];
+
+            if ( ! empty( $copy['describing'] ) ) {
+                $describing[] = self::resolve( $copy['describing'], $amap );
+            }
+            if ( ! empty( $copy['probably_not'] ) ) {
+                $probably[] = self::resolve( $copy['probably_not'], $amap );
+            }
+            if ( ! empty( $copy['worth_trying']['text'] ) ) {
+                $key = isset( $copy['worth_trying']['key'] ) ? $copy['worth_trying']['key'] : $id;
+                if ( ! isset( $seen_try[ $key ] ) && count( $tries ) < self::MAX_TRIES ) {
+                    $seen_try[ $key ] = true;
+                    $tries[]          = self::resolve( $copy['worth_trying']['text'], $amap );
+                }
+            }
+        }
+
+        // Assemble the sections in fixed order, dropping any that are empty so
+        // a short reading looks deliberate rather than half-filled. The
+        // read-next section is added in a later stage from the taxonomy.
+        $sections = array();
+        if ( $describing ) {
+            $sections[] = array( 'key' => 'describing', 'heading' => $p['sections']['describing'], 'paragraphs' => $describing );
+        }
+        if ( $probably ) {
+            $sections[] = array( 'key' => 'probably_not', 'heading' => $p['sections']['probably_not'], 'paragraphs' => $probably );
+        }
+        if ( $tries ) {
+            $sections[] = array( 'key' => 'worth_trying', 'heading' => $p['sections']['worth_trying'], 'paragraphs' => $tries );
+        }
+
+        return array( 'is_gate' => false, 'sections' => $sections );
+    }
+
+    /**
+     * Build and render the reading to HTML in one step.
+     */
+    public static function render( $findings, $answers ) {
+        return self::render_html( self::build_reading( $findings, $answers ) );
+    }
+
+    /**
+     * Render a reading array to HTML.
+     */
+    public static function render_html( $reading ) {
+        if ( ! empty( $reading['is_gate'] ) ) {
+            $html  = '<div class="asq-reading asq-reading--gate">';
+            $html .= '<h3 class="asq-reading-heading asq-reading-heading--gate">' . esc_html( self::texturize( $reading['heading'] ) ) . '</h3>';
+            $html .= '<div class="asq-reading-section asq-reading-section--gate"><p class="asq-reading-p">' . $reading['body'] . '</p></div>';
+            $html .= '</div>';
+            return $html;
+        }
+
+        $html = '<div class="asq-reading">';
+        foreach ( $reading['sections'] as $section ) {
+            $html .= '<section class="asq-reading-section asq-reading-section--' . esc_attr( $section['key'] ) . '">';
+            $html .= '<h3 class="asq-reading-heading">' . esc_html( self::texturize( $section['heading'] ) ) . '</h3>';
+            foreach ( $section['paragraphs'] as $para ) {
+                $html .= '<p class="asq-reading-p">' . $para . '</p>';
+            }
+            $html .= '</section>';
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
+    /* ────────── internals ────────── */
+
+    /**
+     * Map each answered question id to her answer text (comma-joined if she
+     * picked more than one), for weaving into the copy.
+     */
+    protected static function answer_map( $answers ) {
+        $map = array();
+        foreach ( ASQ_Config::selected_keys( (array) $answers ) as $qid => $keys ) {
+            $texts = array();
+            foreach ( (array) $keys as $key ) {
+                $t = ASQ_Config::answer_text( $qid, $key );
+                if ( '' !== $t ) {
+                    $texts[] = $t;
+                }
+            }
+            $map[ $qid ] = implode( ', ', $texts );
+        }
+        return $map;
+    }
+
+    /**
+     * Resolve the tokens in one sentence and texturise it.
+     *
+     *   {al:Q2}  her answer, first letter lower-cased for mid-sentence use
+     *   {a:Q2}   her answer, as written
+     *   {em}…{/em} an emphasised phrase
+     */
+    protected static function resolve( $raw, $amap ) {
+        $text = (string) $raw;
+
+        $text = preg_replace_callback( '/\{al:(Q\d+)\}/', function ( $m ) use ( $amap ) {
+            $v = isset( $amap[ $m[1] ] ) ? $amap[ $m[1] ] : '';
+            return '' === $v ? '' : self::lcfirst_mb( $v );
+        }, $text );
+
+        $text = preg_replace_callback( '/\{a:(Q\d+)\}/', function ( $m ) use ( $amap ) {
+            return isset( $amap[ $m[1] ] ) ? $amap[ $m[1] ] : '';
+        }, $text );
+
+        // Curl quotes and tidy punctuation to house style.
+        if ( function_exists( 'wptexturize' ) ) {
+            $text = wptexturize( $text );
+        }
+
+        $text = str_replace( '{em}', '<span class="asq-reading-em">', $text );
+        $text = str_replace( '{/em}', '</span>', $text );
+
+        return $text;
+    }
+
+    /**
+     * Curl quotes and tidy punctuation, if WordPress is loaded.
+     */
+    protected static function texturize( $str ) {
+        return function_exists( 'wptexturize' ) ? wptexturize( $str ) : $str;
+    }
+
+    /**
+     * Lower-case the first character, multibyte-safe.
+     */
+    protected static function lcfirst_mb( $str ) {
+        if ( '' === $str ) {
+            return $str;
+        }
+        $first = function_exists( 'mb_substr' ) ? mb_substr( $str, 0, 1 ) : substr( $str, 0, 1 );
+        $rest  = function_exists( 'mb_substr' ) ? mb_substr( $str, 1 ) : substr( $str, 1 );
+        $lower = function_exists( 'mb_strtolower' ) ? mb_strtolower( $first ) : strtolower( $first );
+        return $lower . $rest;
+    }
+}
