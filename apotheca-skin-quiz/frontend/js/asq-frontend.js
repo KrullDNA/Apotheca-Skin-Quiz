@@ -1,0 +1,1148 @@
+(function ($) {
+    'use strict';
+
+    // Verbose console logging is only active with ?asq_debug=1 in the URL,
+    // so customer consoles stay clean but troubleshooting stays easy.
+    var ASQ_DEBUG = /[?&]asq_debug=1/.test(window.location.search);
+    function asqLog() {
+        if (ASQ_DEBUG && window.console) {
+            console.log.apply(console, arguments);
+        }
+    }
+
+    /**
+     * Apotheca Skin Quiz – Frontend Controller
+     *
+     * Manages the multi-step quiz flow:
+     *   Question slides → Email capture → Loading → Results
+     */
+    function SkinQuiz($el) {
+        this.$el        = $el;
+        this.finderId   = $el.data('finder-id');
+        this.questions  = $el.data('questions') || [];
+        this.options    = $el.data('options') || {};
+        this.current    = 0;
+        this.answers    = {};  // { questionIndex: [answerIndices] }
+        this.followupAnswers = {};  // { "qi_ai": [followupAnswerIndices] }
+        this.history    = [];  // navigation stack: [{ type:'question', qi:N }, { type:'followup', qi:N, ai:M }, ...]
+        this.totalQ     = this.questions.length;
+
+        this.$progress      = $el.find('.asq-progress-fill');
+        this.$progressText  = $el.find('.asq-progress-text');
+        this.$container     = $el.find('.asq-questions-container');
+        this.$emailScreen   = $el.find('.asq-email-screen');
+        this.$loadingScreen = $el.find('.asq-loading-screen');
+        this.$resultsScreen = $el.find('.asq-results-screen');
+
+        this.init();
+    }
+
+    SkinQuiz.prototype = {
+
+        init: function () {
+            if (!this.totalQ) return;
+            this.applyI18n();
+            this.bindGlobal();
+
+            // If a results token is present in the URL, skip straight to results.
+            if (asqFrontend.results_token) {
+                this.loadSessionResults(asqFrontend.results_token);
+                return;
+            }
+
+            this.history.push({ type: 'question', qi: 0 });
+            this.renderQuestion(0);
+            this.updateProgress();
+        },
+
+        /* ───────── i18n labels ───────── */
+
+        applyI18n: function () {
+            var i = asqFrontend.i18n;
+            this.$emailScreen.find('.asq-email-title').text(i.email_label);
+            this.$emailScreen.find('.asq-email-input').attr('placeholder', i.email_placeholder);
+            this.$emailScreen.find('.asq-send-email').text(i.send_results);
+            this.$emailScreen.find('.asq-skip-email').text(i.skip_email);
+
+            // Custom heading overrides from Elementor widget data attributes
+            var customLoading = this.$el.data('loading-heading');
+            var customResults = this.$el.data('results-heading');
+
+            this.$loadingScreen.find('.asq-loading-text').text(customLoading || i.loading);
+            this.$resultsScreen.find('.asq-results-title').text(customResults || i.your_results);
+            this.$resultsScreen.find('.asq-start-over').text(i.start_over);
+        },
+
+        /* ───────── Global events ───────── */
+
+        bindGlobal: function () {
+            var self = this;
+
+            this.$el.on('click', '.asq-answer-option', function () {
+                self.handleAnswerClick($(this));
+            });
+
+            // Text answer hover-out animation: slide out to the right.
+            // Only attach on devices that truly support hover (no touch ghost events).
+            if (window.matchMedia('(hover: hover)').matches) {
+                this.$el.on('mouseenter', '.asq-answer-option--text', function () {
+                    $(this).removeClass('asq-hover-out asq-no-transition');
+                });
+                this.$el.on('mouseleave', '.asq-answer-option--text', function () {
+                    if (!$(this).hasClass('asq-selected')) {
+                        $(this).addClass('asq-hover-out');
+                        // After slide-out animation, snap ::before back to start without transition
+                        // (prevents flash through translateX(0) on the way from 100% to -100%)
+                        var $opt = $(this);
+                        setTimeout(function () {
+                            $opt.addClass('asq-no-transition').removeClass('asq-hover-out');
+                            // Force reflow so the snap happens before re-enabling transitions
+                            void $opt[0].offsetHeight;
+                            requestAnimationFrame(function () {
+                                $opt.removeClass('asq-no-transition');
+                            });
+                        }, 350);
+                    }
+                });
+            }
+
+            this.$el.on('click', '.asq-btn-continue', function () {
+                self.transitionOut(function () { self.goNext(); });
+            });
+
+            this.$el.on('click', '.asq-btn-back', function () {
+                self.transitionOut(function () { self.goBack(); });
+            });
+
+            this.$el.on('click', '.asq-skip-email', function () {
+                self.showLoading();
+            });
+
+            this.$el.on('click', '.asq-send-email', function () {
+                self.sendEmail();
+            });
+
+            this.$el.on('click', '.asq-start-over', function () {
+                self.startOver();
+            });
+
+            this.$el.on('click', '.asq-btn-view-results', function () {
+                self.showLoading();
+            });
+        },
+
+        /* ───────── Render question ───────── */
+
+        renderQuestion: function (idx) {
+            var q = this.questions[idx];
+            if (!q) return;
+
+            // When auto-advancing from a single-select tap, suppress pointer
+            // events on the incoming answers so the browser cannot apply a
+            // ghost hover / active state to whatever element lands under the
+            // finger.  The class is baked into the HTML *before* DOM insertion
+            // so there is zero window for the browser to match :hover.
+            var suppress = this._suppressTouch;
+            this._suppressTouch = false;
+            var noPtr = suppress ? ' asq-no-pointer' : '';
+
+            var hasImages = q.answers.some(function (a) { return !!a.image; });
+            var html = '<div class="asq-question-slide" data-qi="' + idx + '">';
+
+            var instructionText = q.instruction || (q.multiple ? 'Select all that apply' : 'Select one option');
+
+            if (hasImages) {
+                // Image grid layout
+                html += '<h2 class="asq-question-text asq-question-text--center">' + this.escHtml(q.text) + '</h2>';
+                html += '<p class="asq-question-instruction asq-question-instruction--center">' + this.escHtml(instructionText) + '</p>';
+                html += '<div class="asq-answers-grid asq-answers-grid--images">';
+                for (var i = 0; i < q.answers.length; i++) {
+                    var a = q.answers[i];
+                    var selected = this.isSelected(idx, i) ? ' asq-selected' : '';
+                    html += '<div class="asq-answer-option asq-answer-option--image' + selected + noPtr + '" data-ai="' + i + '">';
+                    if (a.image) {
+                        html += '<div class="asq-answer-img-wrap"><img src="' + this.escHtml(a.image) + '" alt="' + this.escHtml(a.text) + '"></div>';
+                    }
+                    html += '<span class="asq-answer-text">' + this.escHtml(a.text) + '</span>';
+                    if (a.description) {
+                        html += '<span class="asq-answer-desc">' + this.escHtml(a.description) + '</span>';
+                    }
+                    if (q.multiple) {
+                        html += '<span class="asq-checkbox"><span class="asq-check-icon"></span></span>';
+                    }
+                    html += '</div>';
+                }
+                html += '</div>';
+            } else {
+                // Two-column text layout
+                html += '<div class="asq-text-layout">';
+                html += '<div class="asq-text-left">';
+                html += '<h2 class="asq-question-text">' + this.escHtml(q.text) + '</h2>';
+                html += '<p class="asq-question-instruction">' + this.escHtml(instructionText) + '</p>';
+                html += '</div>';
+                html += '<div class="asq-text-right">';
+                html += '<div class="asq-answers-grid asq-answers-grid--text">';
+                for (var j = 0; j < q.answers.length; j++) {
+                    var b = q.answers[j];
+                    var sel = this.isSelected(idx, j) ? ' asq-selected' : '';
+                    html += '<div class="asq-answer-option asq-answer-option--text' + sel + noPtr + '" data-ai="' + j + '">';
+                    html += '<span class="asq-answer-text">' + this.escHtml(b.text) + '</span>';
+                    if (q.multiple) {
+                        html += '<span class="asq-checkbox"><span class="asq-check-icon"></span></span>';
+                    }
+                    html += '</div>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+
+            // Navigation buttons
+            html += '<div class="asq-nav-buttons">';
+            if (idx > 0) {
+                html += '<button type="button" class="asq-btn asq-btn-secondary asq-btn-back">' + asqFrontend.i18n.back + '</button>';
+            } else {
+                html += '<span></span>';
+            }
+            if (q.multiple) {
+                var hasSelection = this.answers[idx] && this.answers[idx].length > 0;
+                html += '<button type="button" class="asq-btn asq-btn-primary asq-btn-continue' + (hasSelection ? '' : ' asq-btn-disabled') + '"' + (hasSelection ? '' : ' disabled') + '>' + asqFrontend.i18n.next + '</button>';
+            }
+            html += '</div>';
+
+            html += '</div>';
+
+            this.$container.html(html);
+
+            // Lift the pointer suppression after a short cooldown.
+            if (suppress) {
+                var $answers = this.$container.find('.asq-answer-option');
+                setTimeout(function () { $answers.removeClass('asq-no-pointer'); }, 400);
+            }
+
+            // Animate in
+            this.$container.find('.asq-question-slide').addClass('asq-slide-in');
+        },
+
+        /* ───────── Render follow-up question ───────── */
+
+        renderFollowupQuestion: function (qi, ai) {
+            var fu = this.questions[qi].answers[ai].follow_up;
+            if (!fu) return;
+
+            var suppress = this._suppressTouch;
+            this._suppressTouch = false;
+            var noPtr = suppress ? ' asq-no-pointer' : '';
+
+            var hasImages = fu.answers.some(function (a) { return !!a.image; });
+            var html = '<div class="asq-question-slide asq-followup-slide" data-qi="' + qi + '" data-ai="' + ai + '">';
+
+            var instructionText = fu.instruction || (fu.multiple ? 'Select all that apply' : 'Select one option');
+
+            if (hasImages) {
+                html += '<h2 class="asq-question-text asq-question-text--center">' + this.escHtml(fu.text) + '</h2>';
+                html += '<p class="asq-question-instruction asq-question-instruction--center">' + this.escHtml(instructionText) + '</p>';
+                html += '<div class="asq-answers-grid asq-answers-grid--images">';
+                for (var i = 0; i < fu.answers.length; i++) {
+                    var a = fu.answers[i];
+                    var selected = this.isFollowupSelected(qi, ai, i) ? ' asq-selected' : '';
+                    html += '<div class="asq-answer-option asq-answer-option--image' + selected + noPtr + '" data-ai="' + i + '">';
+                    if (a.image) {
+                        html += '<div class="asq-answer-img-wrap"><img src="' + this.escHtml(a.image) + '" alt="' + this.escHtml(a.text) + '"></div>';
+                    }
+                    html += '<span class="asq-answer-text">' + this.escHtml(a.text) + '</span>';
+                    if (a.description) {
+                        html += '<span class="asq-answer-desc">' + this.escHtml(a.description) + '</span>';
+                    }
+                    if (fu.multiple) {
+                        html += '<span class="asq-checkbox"><span class="asq-check-icon"></span></span>';
+                    }
+                    html += '</div>';
+                }
+                html += '</div>';
+            } else {
+                html += '<div class="asq-text-layout">';
+                html += '<div class="asq-text-left">';
+                html += '<h2 class="asq-question-text">' + this.escHtml(fu.text) + '</h2>';
+                html += '<p class="asq-question-instruction">' + this.escHtml(instructionText) + '</p>';
+                html += '</div>';
+                html += '<div class="asq-text-right">';
+                html += '<div class="asq-answers-grid asq-answers-grid--text">';
+                for (var j = 0; j < fu.answers.length; j++) {
+                    var b = fu.answers[j];
+                    var sel = this.isFollowupSelected(qi, ai, j) ? ' asq-selected' : '';
+                    html += '<div class="asq-answer-option asq-answer-option--text' + sel + noPtr + '" data-ai="' + j + '">';
+                    html += '<span class="asq-answer-text">' + this.escHtml(b.text) + '</span>';
+                    if (fu.multiple) {
+                        html += '<span class="asq-checkbox"><span class="asq-check-icon"></span></span>';
+                    }
+                    html += '</div>';
+                }
+                html += '</div>';
+                html += '</div>';
+                html += '</div>';
+            }
+
+            // Navigation buttons – always show back for follow-ups
+            html += '<div class="asq-nav-buttons">';
+            html += '<button type="button" class="asq-btn asq-btn-secondary asq-btn-back">' + asqFrontend.i18n.back + '</button>';
+            if (fu.multiple) {
+                var key = qi + '_' + ai;
+                var hasSelection = this.followupAnswers[key] && this.followupAnswers[key].length > 0;
+                html += '<button type="button" class="asq-btn asq-btn-primary asq-btn-continue' + (hasSelection ? '' : ' asq-btn-disabled') + '"' + (hasSelection ? '' : ' disabled') + '>' + asqFrontend.i18n.next + '</button>';
+            }
+            html += '</div>';
+
+            html += '</div>';
+
+            this.$container.html(html);
+
+            if (suppress) {
+                var $answers = this.$container.find('.asq-answer-option');
+                setTimeout(function () { $answers.removeClass('asq-no-pointer'); }, 400);
+            }
+
+            this.$container.find('.asq-question-slide').addClass('asq-slide-in');
+        },
+
+        /* ───────── Answer click ───────── */
+
+        handleAnswerClick: function ($opt) {
+            var $slide = this.$container.find('.asq-question-slide');
+            var isFollowup = $slide.hasClass('asq-followup-slide');
+            var ai = $opt.data('ai');
+
+            if (isFollowup) {
+                // Follow-up answer click
+                var fuQi = $slide.data('qi');
+                var fuAi = $slide.data('ai');
+                var key = fuQi + '_' + fuAi;
+                var fu = this.questions[fuQi].answers[fuAi].follow_up;
+
+                if (fu.multiple) {
+                    $opt.toggleClass('asq-selected');
+                    if (!this.followupAnswers[key]) this.followupAnswers[key] = [];
+                    var pos = this.followupAnswers[key].indexOf(ai);
+                    if (pos === -1) {
+                        this.followupAnswers[key].push(ai);
+                    } else {
+                        this.followupAnswers[key].splice(pos, 1);
+                    }
+                    var $btn = this.$container.find('.asq-btn-continue');
+                    if (this.followupAnswers[key].length > 0) {
+                        $btn.removeClass('asq-btn-disabled').prop('disabled', false);
+                    } else {
+                        $btn.addClass('asq-btn-disabled').prop('disabled', true);
+                    }
+                } else {
+                    this.$container.find('.asq-answer-option').removeClass('asq-selected');
+                    $opt.addClass('asq-selected');
+                    this.followupAnswers[key] = [ai];
+
+                    var self = this;
+                    setTimeout(function () {
+                        $slide.addClass('asq-slide-out');
+                        setTimeout(function () {
+                            self._suppressTouch = true;
+                            self.goNext();
+                        }, 280);
+                    }, 200);
+                }
+            } else {
+                // Main question answer click
+                var qi = this.current;
+                var q  = this.questions[qi];
+
+                if (q.multiple) {
+                    $opt.toggleClass('asq-selected');
+                    if (!this.answers[qi]) this.answers[qi] = [];
+                    var pos = this.answers[qi].indexOf(ai);
+                    if (pos === -1) {
+                        this.answers[qi].push(ai);
+                    } else {
+                        this.answers[qi].splice(pos, 1);
+                    }
+                    var $btn = this.$container.find('.asq-btn-continue');
+                    if (this.answers[qi].length > 0) {
+                        $btn.removeClass('asq-btn-disabled').prop('disabled', false);
+                    } else {
+                        $btn.addClass('asq-btn-disabled').prop('disabled', true);
+                    }
+                } else {
+                    this.$container.find('.asq-answer-option').removeClass('asq-selected');
+                    $opt.addClass('asq-selected');
+                    this.answers[qi] = [ai];
+
+                    var self = this;
+                    setTimeout(function () {
+                        $slide.addClass('asq-slide-out');
+                        setTimeout(function () {
+                            self._suppressTouch = true;
+                            self.goNext();
+                        }, 280);
+                    }, 200);
+                }
+            }
+        },
+
+        isSelected: function (qi, ai) {
+            return this.answers[qi] && this.answers[qi].indexOf(ai) !== -1;
+        },
+
+        isFollowupSelected: function (qi, parentAi, fai) {
+            var key = qi + '_' + parentAi;
+            return this.followupAnswers[key] && this.followupAnswers[key].indexOf(fai) !== -1;
+        },
+
+        /* ───────── Navigation ───────── */
+
+        /**
+         * Fade out the current slide, then call a callback to render the next view.
+         * If no slide is visible (e.g. first render) the callback fires immediately.
+         */
+        transitionOut: function (cb) {
+            var $slide = this.$container.find('.asq-question-slide');
+            if (!$slide.length) { cb(); return; }
+            $slide.addClass('asq-slide-out');
+            setTimeout(cb, 280); // slightly longer than the 250ms animation
+        },
+
+        goNext: function () {
+            var lastEntry = this.history[this.history.length - 1];
+
+            if (lastEntry.type === 'followup') {
+                // Coming from a follow-up, advance to next main question
+                var nextQi = lastEntry.qi + 1;
+                if (nextQi >= this.totalQ) {
+                    this.showEmail();
+                    return;
+                }
+                this.current = nextQi;
+                this.history.push({ type: 'question', qi: nextQi });
+                this.renderQuestion(nextQi);
+                this.updateProgress();
+                return;
+            }
+
+            // Coming from a main question – check if selected answer has a follow-up
+            var qi = lastEntry.qi;
+            var q = this.questions[qi];
+            var selected = this.answers[qi] || [];
+            var followup = null;
+
+            for (var i = 0; i < selected.length; i++) {
+                var ai = selected[i];
+                var a = q.answers[ai];
+                if (a && a.follow_up && a.follow_up.text && a.follow_up.answers && a.follow_up.answers.length) {
+                    followup = { qi: qi, ai: ai };
+                    break;
+                }
+            }
+
+            if (followup) {
+                this.history.push({ type: 'followup', qi: followup.qi, ai: followup.ai });
+                this.renderFollowupQuestion(followup.qi, followup.ai);
+                this.updateProgress();
+            } else {
+                var nextQi = qi + 1;
+                if (nextQi >= this.totalQ) {
+                    this.showEmail();
+                    return;
+                }
+                this.current = nextQi;
+                this.history.push({ type: 'question', qi: nextQi });
+                this.renderQuestion(nextQi);
+                this.updateProgress();
+            }
+        },
+
+        goBack: function () {
+            if (this.history.length <= 1) return;
+
+            this.history.pop();
+            var prev = this.history[this.history.length - 1];
+
+            if (prev.type === 'followup') {
+                this.renderFollowupQuestion(prev.qi, prev.ai);
+            } else {
+                this.current = prev.qi;
+                this.renderQuestion(prev.qi);
+            }
+            this.updateProgress();
+        },
+
+        /* ───────── Progress bar ───────── */
+
+        updateProgress: function () {
+            // Progress reflects the current position in the quiz.
+            // current is 0-based, so current/totalQ gives the fraction
+            // of the quiz the user has reached.
+            var pct = Math.round((this.current / this.totalQ) * 100);
+            this.$progress.css('width', pct + '%');
+            this.$progressText.text(pct + '%');
+        },
+
+        /* ───────── Email screen ───────── */
+
+        showEmail: function () {
+            this.updateProgress();
+            this.$container.hide();
+            this.$emailScreen.fadeIn(300);
+        },
+
+        sendEmail: function () {
+            var self  = this;
+            var email = this.$emailScreen.find('.asq-email-input').val().trim();
+            var $msg  = this.$emailScreen.find('.asq-email-message');
+
+            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                $msg.text('Please enter a valid email.').css('color', '#b32d2e').show();
+                return;
+            }
+
+            $msg.text('Sending…').css('color', '#666').show();
+
+            // Step 1: Save session to get a unique results URL.
+            $.post(asqFrontend.ajax_url, {
+                action: 'asq_save_results_session',
+                nonce: asqFrontend.nonce,
+                finder_id: self.finderId,
+                answers: JSON.stringify(self.answers),
+                followup_answers: JSON.stringify(self.followupAnswers)
+            }, function (sessionRes) {
+                if (!sessionRes.success) {
+                    $msg.text(asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
+                    return;
+                }
+
+                var token = sessionRes.data.token;
+                var baseUrl = asqFrontend.page_url || window.location.href.split('?')[0];
+                var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
+                var resultsUrl = baseUrl + sep + 'asq_results=' + encodeURIComponent(token);
+
+                // Step 2: Compute results to get product IDs for the email.
+                self.computeResults(function (data) {
+                    var consent = self.$emailScreen.find('.asq-consent-checkbox').is(':checked') ? 1 : 0;
+
+                    var postData = {
+                        action: 'asq_send_results_email',
+                        nonce: asqFrontend.nonce,
+                        finder_id: self.finderId,
+                        email: email,
+                        product_ids: data.product_ids,
+                        results_url: resultsUrl,
+                        consent: consent,
+                        // Raw answers so the server can log the submission
+                        // with readable question/answer text.
+                        answers: JSON.stringify(self.answers),
+                        followup_answers: JSON.stringify(self.followupAnswers)
+                    };
+
+                    // Pass full product data (with variation + category info) for the email.
+                    if (data.products && data.products.length) {
+                        postData.products_data = JSON.stringify(data.products);
+                    }
+
+                    // Pass Day/Night grouping if present.
+                    if (data.day_night) {
+                        postData.day_night = 1;
+                        if (data.day_products && data.day_products.length) {
+                            postData.day_products = JSON.stringify(data.day_products);
+                        }
+                        if (data.night_products && data.night_products.length) {
+                            postData.night_products = JSON.stringify(data.night_products);
+                        }
+                    }
+
+                    $.post(asqFrontend.ajax_url, postData, function (res) {
+                        if (res.success) {
+                            // Redirect to results page immediately.
+                            window.location.href = resultsUrl;
+                        } else {
+                            $msg.text(res.data && res.data.message ? res.data.message : asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
+                        }
+                    });
+                });
+            });
+        },
+
+        /**
+         * Load results from a stored session token.
+         * Skips the quiz and shows results directly.
+         */
+        loadSessionResults: function (token) {
+            var self = this;
+
+            // Hide quiz UI, show loading.
+            this.$container.hide();
+            this.$emailScreen.hide();
+            this.$el.find('.asq-progress-bar-wrap').hide();
+            this.$loadingScreen.fadeIn(300);
+
+            // Re-compute results using the stored answers.
+            $.post(asqFrontend.ajax_url, {
+                action: 'asq_compute_results',
+                nonce: asqFrontend.nonce,
+                finder_id: self.finderId,
+                answers: '{}',
+                followup_answers: '{}',
+                results_token: token
+            }, function (res) {
+                if (res.success) {
+                    setTimeout(function () { self.showResults(res.data); }, 800);
+                } else {
+                    // Token invalid or expired – start quiz normally.
+                    self.$loadingScreen.hide();
+                    self.$el.find('.asq-progress-bar-wrap').show();
+                    self.history.push({ type: 'question', qi: 0 });
+                    self.renderQuestion(0);
+                    self.updateProgress();
+                }
+            }).fail(function () {
+                self.$loadingScreen.hide();
+                self.$el.find('.asq-progress-bar-wrap').show();
+                self.history.push({ type: 'question', qi: 0 });
+                self.renderQuestion(0);
+                self.updateProgress();
+            });
+        },
+
+        /* ───────── Loading screen ───────── */
+
+        showLoading: function () {
+            var self = this;
+            this.$emailScreen.hide();
+            this.$container.hide();
+            this.$loadingScreen.fadeIn(300);
+
+            // Update progress to 100%
+            this.$progress.css('width', '100%');
+            this.$progressText.text(asqFrontend.i18n.complete);
+
+            if (this._cachedResults) {
+                setTimeout(function () { self.showResults(self._cachedResults); }, 1500);
+            } else {
+                this.computeResults(function (data) {
+                    // Show loading for at least 1.5s for UX
+                    setTimeout(function () { self.showResults(data); }, 1500);
+                });
+            }
+        },
+
+        /* ───────── Compute results ───────── */
+
+        computeResults: function (callback) {
+            var self = this;
+            $.post(asqFrontend.ajax_url, {
+                action: 'asq_compute_results',
+                nonce: asqFrontend.nonce,
+                finder_id: this.finderId,
+                answers: JSON.stringify(this.answers),
+                followup_answers: JSON.stringify(this.followupAnswers)
+            }, function (res) {
+                // Debug: log the full AJAX response
+                if (ASQ_DEBUG && res && res.data && res.data.debug) {
+                    console.group('[Apotheca Skin Quiz] Debug – compute_results');
+                    for (var i = 0; i < res.data.debug.length; i++) {
+                        console.log(res.data.debug[i]);
+                    }
+                    if (res.data.day_night) {
+                        console.log('day_night:', true);
+                        console.log('day_listing_html length:', (res.data.day_listing_html || '').length);
+                        console.log('night_listing_html length:', (res.data.night_listing_html || '').length);
+                    } else {
+                        console.log('listing_html length:', (res.data.listing_html || '').length);
+                    }
+                    console.log('products count:', (res.data.products || []).length);
+                    console.log('styles count:', (res.data.styles || []).length);
+                    console.log('scripts count:', (res.data.scripts || []).length);
+                    console.groupEnd();
+                }
+
+                if (res.success) {
+                    callback(res.data);
+                } else {
+                    console.warn('[Apotheca Skin Quiz] AJAX returned success=false', res);
+                    callback({ products: [], product_ids: [], listing_html: '', options: self.options });
+                }
+            }).fail(function (jqXHR, textStatus, errorThrown) {
+                console.error('[Apotheca Skin Quiz] AJAX FAILED:', textStatus, errorThrown);
+                console.error('[Apotheca Skin Quiz] Response text:', jqXHR.responseText ? jqXHR.responseText.substring(0, 1000) : '(empty)');
+                callback({ products: [], product_ids: [], listing_html: '', options: self.options });
+            });
+        },
+
+        /* ───────── Results screen ───────── */
+
+        showResults: function (data) {
+            var self = this;
+            this.$loadingScreen.hide();
+
+            asqLog('[Apotheca Skin Quiz] showResults – styles:', (data.styles || []).length,
+                'scripts:', (data.scripts || []).length,
+                'day_night:', !!data.day_night);
+
+            // Load CSS first (shared across both modes).
+            this.loadStyles(data.styles || []);
+
+            // Safari fix: make the results screen visible (but transparent) BEFORE
+            // injecting content.  Safari doesn't calculate layout for elements
+            // inserted into a display:none container, so CrocoBlock templates
+            // render as blank.  By making the container visible first, Safari
+            // properly lays out the injected HTML.
+            this.$resultsScreen.css({ opacity: 0, display: 'block' });
+
+            if (data.day_night) {
+                this.renderDayNightResults(data);
+            } else {
+                // If CrocoBlock listing HTML was returned and has real content, use it
+                var listingHtml = (data.listing_html || '').trim();
+                if (listingHtml.length > 0) {
+                    this.$resultsScreen.find('.asq-results-container').html(listingHtml);
+
+                    this.loadScripts(data.scripts || [], function () {
+                        self.initDynamicContent();
+                        // Force reflow so Safari paints the new content.
+                        void self.$resultsScreen[0].offsetHeight;
+                    });
+                } else {
+                    this.renderFallbackResults(data);
+                }
+            }
+
+            // Animate in (from the already-visible but transparent state).
+            this.$resultsScreen.animate({ opacity: 1 }, 300);
+        },
+
+        /* ───────── Day / Night tabbed results ───────── */
+
+        renderDayNightResults: function (data) {
+            var self = this;
+            var $container = this.$resultsScreen.find('.asq-results-container');
+
+            var dayLabel   = this.$el.data('tab-day-label')   || asqFrontend.i18n.tab_day   || 'Day';
+            var nightLabel = this.$el.data('tab-night-label') || asqFrontend.i18n.tab_night || 'Night';
+
+            var html = '<div class="asq-dn-tabs">';
+            html += '<button type="button" class="asq-dn-tab asq-dn-tab--active" data-tab="day">' + this.escHtml(dayLabel) + '</button>';
+            html += '<button type="button" class="asq-dn-tab" data-tab="night">' + this.escHtml(nightLabel) + '</button>';
+            html += '</div>';
+
+            html += '<div class="asq-dn-panel asq-dn-panel--day asq-dn-panel--active">';
+            html += (data.day_listing_html || '').trim() || '<div class="asq-dn-fallback" data-set="day"></div>';
+            html += '</div>';
+
+            html += '<div class="asq-dn-panel asq-dn-panel--night">';
+            html += (data.night_listing_html || '').trim() || '<div class="asq-dn-fallback" data-set="night"></div>';
+            html += '</div>';
+
+            $container.html(html);
+
+            // Render fallback cards if no CrocoBlock HTML for a set.
+            if ($container.find('.asq-dn-fallback[data-set="day"]').length) {
+                this.renderFallbackInto($container.find('.asq-dn-fallback[data-set="day"]'), data.day_products || [], data);
+            }
+            if ($container.find('.asq-dn-fallback[data-set="night"]').length) {
+                this.renderFallbackInto($container.find('.asq-dn-fallback[data-set="night"]'), data.night_products || [], data);
+            }
+
+            // Tab click handler.
+            $container.find('.asq-dn-tab').on('click', function () {
+                var tab = $(this).data('tab');
+                $container.find('.asq-dn-tab').removeClass('asq-dn-tab--active');
+                $(this).addClass('asq-dn-tab--active');
+                $container.find('.asq-dn-panel').removeClass('asq-dn-panel--active');
+                $container.find('.asq-dn-panel--' + tab).addClass('asq-dn-panel--active');
+            });
+
+            // Init dynamic content (scripts, Elementor widgets, etc.)
+            this.loadScripts(data.scripts || [], function () {
+                self.initDynamicContent();
+                // Force reflow so Safari paints CrocoBlock templates.
+                void self.$resultsScreen[0].offsetHeight;
+            });
+        },
+
+        renderFallbackInto: function ($target, products, data) {
+            var opts = data.options || this.options;
+            var colsD = opts.cols_desktop || 3;
+            var colsT = opts.cols_tablet || 2;
+            var colsM = opts.cols_mobile || 1;
+
+            var html = '<div class="asq-results-grid asq-cols-d-' + colsD + ' asq-cols-t-' + colsT + ' asq-cols-m-' + colsM + '">';
+            for (var i = 0; i < products.length; i++) {
+                var p = products[i];
+                html += '<div class="asq-result-card">';
+                if (p.match_pct) {
+                    html += '<span class="asq-match-badge">' + p.match_pct + '% match</span>';
+                }
+                if (p.image) {
+                    html += '<a href="' + this.escHtml(p.permalink) + '" class="asq-result-img-link"><img src="' + this.escHtml(p.image) + '" alt="' + this.escHtml(p.name) + '"></a>';
+                }
+                html += '<div class="asq-result-info">';
+                html += '<h4 class="asq-result-name"><a href="' + this.escHtml(p.permalink) + '">' + this.escHtml(p.name) + '</a></h4>';
+                html += '<div class="asq-result-price">' + p.price + '</div>';
+                html += '</div></div>';
+            }
+            html += '</div>';
+            $target.html(html);
+        },
+
+        /**
+         * Dynamically load CSS files that were enqueued server-side
+         * during CrocoBlock listing rendering (e.g. swatch plugin CSS).
+         */
+        loadStyles: function (urls) {
+            asqLog('[Apotheca Skin Quiz] loadStyles:', urls.length, 'URL(s)', urls);
+            for (var i = 0; i < urls.length; i++) {
+                // Check if this stylesheet is already loaded.
+                var alreadyLoaded = false;
+                var links = document.getElementsByTagName('link');
+                var base = urls[i].split('?')[0];
+                for (var k = 0; k < links.length; k++) {
+                    if (links[k].href && links[k].href.split('?')[0].indexOf(base.replace(/^https?:/, '')) !== -1) {
+                        alreadyLoaded = true;
+                        break;
+                    }
+                }
+                if (alreadyLoaded) {
+                    asqLog('[Apotheca Skin Quiz] CSS already loaded, skipping:', urls[i]);
+                    continue;
+                }
+                var link = document.createElement('link');
+                link.rel = 'stylesheet';
+                link.href = urls[i];
+                document.head.appendChild(link);
+                asqLog('[Apotheca Skin Quiz] Loaded CSS:', urls[i]);
+            }
+        },
+
+        /**
+         * Dynamically load JS files that were enqueued server-side,
+         * then invoke the callback once all scripts have loaded.
+         */
+        loadScripts: function (urls, callback) {
+            asqLog('[Apotheca Skin Quiz] loadScripts:', urls.length, 'URL(s)', urls);
+
+            // Filter out scripts already present on the page.
+            var toLoad = [];
+            var existingSrcs = [];
+            var scripts = document.getElementsByTagName('script');
+            for (var k = 0; k < scripts.length; k++) {
+                if (scripts[k].src) {
+                    existingSrcs.push(scripts[k].src.split('?')[0]);
+                }
+            }
+            for (var i = 0; i < urls.length; i++) {
+                var base = urls[i].split('?')[0];
+                if (existingSrcs.indexOf(base) === -1) {
+                    toLoad.push(urls[i]);
+                } else {
+                    asqLog('[Apotheca Skin Quiz] Script already on page, skipping:', urls[i]);
+                }
+            }
+
+            asqLog('[Apotheca Skin Quiz] Scripts to load (after dedup):', toLoad.length);
+
+            if (!toLoad.length) {
+                callback();
+                return;
+            }
+
+            var loaded = 0;
+            for (var j = 0; j < toLoad.length; j++) {
+                var s = document.createElement('script');
+                s.src = toLoad[j];
+                s.onload = s.onerror = function () {
+                    var ok = this.readyState ? /loaded|complete/.test(this.readyState) : true;
+                    asqLog('[Apotheca Skin Quiz] Script ' + (ok ? 'loaded' : 'FAILED') + ':', this.src);
+                    if (++loaded >= toLoad.length) {
+                        callback();
+                    }
+                };
+                document.body.appendChild(s);
+            }
+        },
+
+        /**
+         * Re-initialize third-party widget JS on dynamically loaded content.
+         *
+         * After AJAX-injected listing HTML is in the DOM and any missing
+         * scripts have been loaded, trigger Elementor, WooCommerce and
+         * JetEngine initialization so swatch plugins, add-to-cart buttons
+         * and other interactive widgets work correctly.
+         */
+        initDynamicContent: function () {
+            var $container = this.$resultsScreen.find('.asq-results-container');
+
+            asqLog('[Apotheca Skin Quiz] initDynamicContent – starting');
+
+            // 1. Add .product class to listing items that contain variation forms.
+            //    Swatch plugins (FiF VSE) use $wrap.closest('.product') to scope
+            //    their search for the correct variation form.
+            $container.find('.variations_form').each(function () {
+                $(this).closest(
+                    '.jet-listing-grid__item,' +
+                    '.jet-listing-grid__items > div,' +
+                    '.asq-result-item,' +
+                    '.elementor-widget-wrap,' +
+                    '.e-con-inner,' +
+                    '.e-con'
+                ).addClass('product');
+            });
+
+            // 2. Initialize WooCommerce variation forms (must happen before
+            //    swatch initialization so WC events are ready).
+            var formsInited = 0;
+            if ($.fn.wc_variation_form) {
+                $container.find('.variations_form').each(function () {
+                    formsInited++;
+                    $(this).wc_variation_form().trigger('check_variations');
+                });
+            }
+            asqLog('[Apotheca Skin Quiz] WC variation forms initialized:', formsInited);
+
+            // 3. Ensure Elementor widget hooks are registered.
+            //    When a swatch plugin's JS is loaded dynamically (after
+            //    elementor/frontend/init already fired), its hook registration
+            //    code inside $(window).on('elementor/frontend/init') hasn't
+            //    executed.  Re-triggering causes plugins to register their
+            //    element_ready handlers.
+            if (window.elementorFrontend) {
+                $(window).trigger('elementor/frontend/init');
+            }
+
+            // 4. Trigger Elementor's element_ready for all widgets in the
+            //    container.  This calls registered handlers (e.g. initWrap
+            //    in FiF VSE) which initialise the swatch UI.
+            //    New DOM elements don't have the fifVseInit flag so initWrap
+            //    will run on them; already-initialised elements are skipped.
+            var widgetsTriggered = 0;
+            if (window.elementorFrontend && elementorFrontend.elementsHandler) {
+                if (typeof elementorFrontend.elementsHandler.runReadyTrigger === 'function') {
+                    $container.find('.elementor-widget').each(function () {
+                        widgetsTriggered++;
+                        try {
+                            elementorFrontend.elementsHandler.runReadyTrigger($(this));
+                        } catch (e) {
+                            console.warn('[Apotheca Skin Quiz] runReadyTrigger error:', e);
+                        }
+                    });
+                }
+            }
+            asqLog('[Apotheca Skin Quiz] Elementor widgets triggered:', widgetsTriggered);
+
+            // 5. Log widget types for debugging
+            if (ASQ_DEBUG) {
+                $container.find('[data-widget_type]').each(function () {
+                    console.log('[Apotheca Skin Quiz] Widget data-widget_type:', $(this).data('widget_type'));
+                });
+                $container.find('.elementor-widget').each(function () {
+                    var classes = $(this).attr('class') || '';
+                    var widgetClass = classes.match(/elementor-widget-(\S+)/);
+                    console.log('[Apotheca Skin Quiz] Widget class:', widgetClass ? widgetClass[1] : '(none)',
+                        'has data-widget_type:', !!$(this).attr('data-widget_type'));
+                });
+            }
+
+            // 6. Fallback: directly fire element_ready hooks by widget type.
+            //    Handles cases where runReadyTrigger is unavailable or the
+            //    Elementor version uses a different internal API.
+            if (window.elementorFrontend && elementorFrontend.hooks) {
+                $container.find('[data-widget_type]').each(function () {
+                    var widgetType = $(this).data('widget_type');
+                    if (widgetType) {
+                        try {
+                            elementorFrontend.hooks.doAction(
+                                'frontend/element_ready/' + widgetType, $(this)
+                            );
+                            elementorFrontend.hooks.doAction(
+                                'frontend/element_ready/global', $(this)
+                            );
+                        } catch (e) {}
+                    }
+                });
+            }
+
+            // 7. Direct swatch widget initialization fallback.
+            //    If the swatch plugin's JS was loaded dynamically, its
+            //    $(document).ready() should have already initialised swatches
+            //    (jQuery fires ready callbacks immediately when the document
+            //    is already ready).  Check for fifVseInit and only act on
+            //    un-initialised wrappers.
+            var $swatchWraps = $container.find('.fif-vse-swatches');
+            if ($swatchWraps.length) {
+                asqLog('[Apotheca Skin Quiz] Direct swatch init: found', $swatchWraps.length, 'wrapper(s)');
+                $swatchWraps.each(function () {
+                    var $wrap = $(this);
+
+                    // Already initialised – skip to avoid double-init.
+                    if ($wrap.data('fifVseInit')) {
+                        asqLog('[Apotheca Skin Quiz] Swatch already initialised, skipping');
+                        return;
+                    }
+
+                    // Try firing the swatch widget's specific Elementor hook.
+                    var $widget = $wrap.closest('.elementor-widget');
+                    if ($widget.length && window.elementorFrontend && elementorFrontend.hooks) {
+                        asqLog('[Apotheca Skin Quiz] Firing swatch hook on widget',
+                            'widget_type:', $widget.attr('data-widget_type'));
+                        try {
+                            elementorFrontend.hooks.doAction(
+                                'frontend/element_ready/fif_vse_variation_swatches.default',
+                                $widget
+                            );
+                        } catch (e) {
+                            console.warn('[Apotheca Skin Quiz] Swatch hook error:', e);
+                        }
+                    }
+                });
+            }
+
+            // 8. Trigger generic post-load event (many WP plugins listen for this)
+            $(document.body).trigger('post-load');
+
+            // WooCommerce cart fragments refresh
+            $(document.body).trigger('wc_fragment_refresh');
+
+            // 9. Safari repaint fix: force a synchronous layout recalculation
+            //    so WebKit renders dynamically injected CrocoBlock listing content.
+            //    Without this, Safari may show a blank area because it skipped
+            //    layout for content that was inserted while the container was
+            //    hidden (display:none).
+            var container = $container[0];
+            if (container) {
+                void container.offsetHeight;
+                // Double-RAF ensures the browser paints before we consider
+                // content fully initialised (works around WebKit paint coalescing).
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        void container.offsetHeight;
+                    });
+                });
+            }
+
+            asqLog('[Apotheca Skin Quiz] initDynamicContent – complete');
+        },
+
+        renderFallbackResults: function (data) {
+            var opts = data.options || this.options;
+            var colsD = opts.cols_desktop || 3;
+            var colsT = opts.cols_tablet || 2;
+            var colsM = opts.cols_mobile || 1;
+            var isBeauty = (opts.finder_type === 'beauty');
+
+            var html = '<div class="asq-results-grid asq-cols-d-' + colsD + ' asq-cols-t-' + colsT + ' asq-cols-m-' + colsM + '">';
+            var products = data.products || [];
+
+            for (var i = 0; i < products.length; i++) {
+                var p = products[i];
+                html += '<div class="asq-result-card">';
+
+                // Match badge
+                if (p.match_pct) {
+                    html += '<span class="asq-match-badge">' + p.match_pct + '% match</span>';
+                }
+
+                if (p.image) {
+                    html += '<a href="' + this.escHtml(p.permalink) + '" class="asq-result-img-link"><img src="' + this.escHtml(p.image) + '" alt="' + this.escHtml(p.name) + '"></a>';
+                }
+                html += '<div class="asq-result-info">';
+                html += '<h4 class="asq-result-name"><a href="' + this.escHtml(p.permalink) + '">' + this.escHtml(p.name) + '</a></h4>';
+                html += '<div class="asq-result-price">' + p.price + '</div>';
+
+                // Recommendation reasons based on user answers
+                if (p.reasons && p.reasons.length) {
+                    html += '<ul class="asq-match-reasons">';
+                    for (var r = 0; r < p.reasons.length; r++) {
+                        html += '<li>' + this.escHtml(p.reasons[r]) + '</li>';
+                    }
+                    html += '</ul>';
+                }
+
+                // Add to cart button
+                if (isBeauty && p.is_variable && p.variation_id) {
+                    // Beauty mode: add specific variation to cart
+                    html += '<button type="button" class="asq-btn asq-btn-primary asq-atc-btn asq-atc-variation-btn"'
+                        + ' data-product_id="' + p.id + '"'
+                        + ' data-variation_id="' + p.variation_id + '"';
+                    // Include variation attributes as data attrs
+                    if (p.variation_attributes) {
+                        for (var attrKey in p.variation_attributes) {
+                            if (p.variation_attributes.hasOwnProperty(attrKey)) {
+                                html += ' data-' + this.escHtml(attrKey) + '="' + this.escHtml(p.variation_attributes[attrKey]) + '"';
+                            }
+                        }
+                    }
+                    html += '>' + asqFrontend.i18n.add_to_cart + '</button>';
+                }
+
+                html += '</div>';
+                html += '</div>';
+            }
+
+            html += '</div>';
+            this.$resultsScreen.find('.asq-results-container').html(html);
+        },
+
+        /* ───────── Start over ───────── */
+
+        startOver: function () {
+            this.current = 0;
+            this.answers = {};
+            this.followupAnswers = {};
+            this.history = [{ type: 'question', qi: 0 }];
+            this._cachedResults = null;
+
+            this.$resultsScreen.hide().css('opacity', '');
+            this.$emailScreen.hide();
+            this.$loadingScreen.hide();
+
+            // Reset email screen
+            this.$emailScreen.find('.asq-email-input').val('');
+            this.$emailScreen.find('.asq-consent-checkbox').prop('checked', false);
+            this.$emailScreen.find('.asq-email-message').hide();
+            this.$emailScreen.find('.asq-btn-view-results').text(asqFrontend.i18n.send_results).removeClass('asq-btn-view-results').addClass('asq-send-email');
+
+            // Remove asq_results from URL if present.
+            if (window.history && window.history.replaceState) {
+                var url = new URL(window.location.href);
+                url.searchParams.delete('asq_results');
+                window.history.replaceState({}, '', url.toString());
+            }
+
+            this.$el.find('.asq-progress-bar-wrap').show();
+            this.$container.show();
+            this.renderQuestion(0);
+            this.updateProgress();
+        },
+
+        /* ───────── Utilities ───────── */
+
+        escHtml: function (str) {
+            if (!str) return '';
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(str));
+            return div.innerHTML;
+        }
+    };
+
+    /* ───────── Initialise all finders on page ───────── */
+
+    $(function () {
+        $('.asq-finder').each(function () {
+            new SkinQuiz($(this));
+        });
+    });
+
+    /* ───────── PF Add to Cart: quantity sync ───────── */
+
+    // When the user changes the quantity input, update the sibling
+    // button's data-quantity so WooCommerce's AJAX add-to-cart
+    // picks up the correct amount.
+    $(document).on('change input', '.asq-atc-qty', function () {
+        var qty = parseInt($(this).val(), 10) || 1;
+        $(this).siblings('.asq-atc-btn').attr('data-quantity', qty);
+    });
+
+})(jQuery);

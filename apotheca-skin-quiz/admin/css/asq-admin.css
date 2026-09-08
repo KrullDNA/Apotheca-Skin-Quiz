@@ -1,0 +1,497 @@
+/* ─────────────────────────────────────────
+   Apotheca Skin Quiz – Admin Styles
+   ───────────────────────────────────────── */
+
+/* Questions list */
+#asq-questions-wrap {
+    margin-top: 10px;
+}
+
+.asq-sortable-placeholder {
+    background: #f0f6fc;
+    border: 2px dashed #2271b1;
+    border-radius: 4px;
+    min-height: 50px;
+    margin-bottom: 12px;
+}
+
+/* ─── Question ─── */
+
+.asq-question {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.asq-question-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    background: #f6f7f7;
+    border-bottom: 1px solid #c3c4c7;
+    cursor: pointer;
+    user-select: none;
+    gap: 8px;
+}
+
+.asq-question-header:hover {
+    background: #eff0f1;
+}
+
+.asq-drag-icon {
+    color: #8c8f94;
+    cursor: grab;
+}
+
+.asq-question-title {
+    flex: 1;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.asq-question-toggle {
+    color: #8c8f94;
+}
+
+.asq-remove-question,
+.asq-remove-answer {
+    color: #b32d2e !important;
+    text-decoration: none !important;
+}
+
+.asq-remove-question:hover .dashicons,
+.asq-remove-answer:hover .dashicons {
+    color: #a00;
+}
+
+.asq-question-body {
+    padding: 16px;
+}
+
+/* ─── Answers ─── */
+
+.asq-answers-wrap {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.asq-answers-wrap h4 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #646970;
+    letter-spacing: 0.5px;
+}
+
+.asq-answer {
+    background: #fafafa;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.asq-answer-header {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    background: #f0f0f1;
+    border-bottom: 1px solid #dcdcde;
+    cursor: pointer;
+    gap: 8px;
+}
+
+.asq-answer-header:hover {
+    background: #e8e8e9;
+}
+
+.asq-answer-label {
+    flex: 1;
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.asq-answer-body {
+    padding: 12px;
+}
+
+/* ─── Image ─── */
+
+.asq-answer-image-wrap {
+    margin: 10px 0;
+}
+
+.asq-image-preview {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin: 6px 0;
+}
+
+.asq-image-preview img {
+    max-width: 120px;
+    height: auto;
+    border-radius: 4px;
+    border: 1px solid #dcdcde;
+    display: block;
+}
+
+.asq-remove-image {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-top: 4px;
+    padding: 2px 8px;
+    background: none;
+    border: 1px solid #b32d2e;
+    border-radius: 3px;
+    color: #b32d2e !important;
+    font-size: 12px;
+    text-decoration: none !important;
+    cursor: pointer;
+    line-height: 1.6;
+}
+
+.asq-remove-image:hover {
+    background: #b32d2e;
+    color: #fff !important;
+}
+
+.asq-remove-image .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.asq-remove-image:hover .dashicons {
+    color: #fff;
+}
+
+/* ─── Product search ─── */
+
+.asq-answer-products-wrap {
+    margin-top: 10px;
+    position: relative;
+}
+
+.asq-product-search {
+    margin-bottom: 0 !important;
+}
+
+.asq-product-search-results {
+    position: absolute;
+    z-index: 100;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-top: none;
+    max-height: 220px;
+    overflow-y: auto;
+    width: 100%;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: none;
+}
+
+.asq-product-search-result {
+    padding: 8px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.asq-product-search-result:hover {
+    background: #f0f6fc;
+}
+
+.asq-product-search-result img {
+    border-radius: 3px;
+}
+
+/* ─── Product rows ─── */
+
+.asq-products-list {
+    margin-top: 8px;
+}
+
+.asq-product-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 3px;
+    margin-bottom: 4px;
+}
+
+.asq-product-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.asq-product-category-label {
+    font-size: 12px;
+    color: #646970;
+    white-space: nowrap;
+}
+
+.asq-product-category {
+    font-size: 12px;
+}
+
+.asq-product-set-label {
+    font-size: 12px;
+    color: #646970;
+    white-space: nowrap;
+}
+
+.asq-product-set {
+    font-size: 12px;
+}
+
+.asq-day-night-wrap {
+    margin: 12px 0;
+}
+
+.asq-product-rank-label {
+    font-size: 12px;
+    color: #646970;
+    white-space: nowrap;
+}
+
+.asq-product-rank {
+    width: 50px !important;
+    text-align: center;
+}
+
+.asq-remove-product {
+    color: #b32d2e !important;
+    text-decoration: none !important;
+}
+
+.asq-remove-product:hover .dashicons {
+    color: #a00;
+}
+
+/* ─── Finder type toggle ─── */
+
+.asq-finder-type-wrap {
+    margin-bottom: 12px;
+}
+
+.asq-finder-type-option {
+    display: block;
+    padding: 8px 10px;
+    margin: 4px 0;
+    background: #f6f7f7;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.asq-finder-type-option:hover {
+    background: #f0f6fc;
+    border-color: #2271b1;
+}
+
+.asq-finder-type-option input[type="radio"] {
+    margin-right: 6px;
+}
+
+.asq-finder-type-option .description {
+    display: block;
+    margin-left: 22px;
+    font-size: 12px;
+    color: #646970;
+    margin-top: 2px;
+}
+
+/* ─── Variation picker ─── */
+
+.asq-variation-picker {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.asq-variation-select {
+    width: 100%;
+    max-width: 220px;
+    font-size: 12px;
+}
+
+.asq-variation-name {
+    display: block;
+    font-size: 11px;
+    color: #646970;
+    margin-top: 2px;
+}
+
+/* ─── Misc ─── */
+
+.asq-drag-handle,
+.asq-drag-handle-answer {
+    cursor: grab;
+}
+
+.asq-drag-handle:active,
+.asq-drag-handle-answer:active {
+    cursor: grabbing;
+}
+
+/* ─── Day / Night Tab Styling metabox ─── */
+
+.asq-dn-styles-wrap {
+    margin-top: 8px;
+}
+
+.asq-dn-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+@media (max-width: 782px) {
+    .asq-dn-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.asq-dn-fieldset {
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 0;
+    background: #f9f9f9;
+}
+
+.asq-dn-fieldset legend {
+    font-weight: 600;
+    font-size: 13px;
+    padding: 0 6px;
+}
+
+.asq-dn-fieldset label {
+    font-size: 12px;
+    color: #1d2327;
+}
+
+.asq-dn-fieldset p {
+    margin: 8px 0;
+}
+
+/* ─── Follow-up Questions ─── */
+
+.asq-followup-wrap {
+    margin-top: 12px;
+    padding: 12px;
+    background: #f0f6fc;
+    border: 1px solid #c3c4c7;
+    border-left: 4px solid #2271b1;
+    border-radius: 4px;
+}
+
+.asq-followup-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.asq-followup-header .dashicons {
+    color: #2271b1;
+}
+
+.asq-followup-header strong {
+    flex: 1;
+}
+
+.asq-remove-followup {
+    color: #b32d2e !important;
+    text-decoration: none !important;
+    font-size: 12px;
+}
+
+.asq-followup-body p {
+    margin: 6px 0;
+}
+
+.asq-followup-body label {
+    font-size: 12px;
+    color: #1d2327;
+    font-weight: 500;
+}
+
+.asq-followup-answers {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #c3c4c7;
+}
+
+.asq-followup-answers h5 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #646970;
+    letter-spacing: 0.5px;
+}
+
+.asq-followup-answer {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.asq-followup-answer-header {
+    display: flex;
+    align-items: center;
+    padding: 6px 10px;
+    background: #f6f7f7;
+    border-bottom: 1px solid #dcdcde;
+    cursor: pointer;
+    gap: 6px;
+}
+
+.asq-followup-answer-header:hover {
+    background: #eff0f1;
+}
+
+.asq-followup-answer-label {
+    flex: 1;
+    font-weight: 500;
+    font-size: 12px;
+}
+
+.asq-remove-followup-answer {
+    color: #b32d2e !important;
+    text-decoration: none !important;
+}
+
+.asq-followup-answer-body {
+    padding: 10px;
+}
+
+.asq-followup-answer-body p {
+    margin: 6px 0;
+}
+
+.asq-followup-add {
+    margin-top: 8px;
+}
+
+.asq-add-followup {
+    font-size: 12px;
+    color: #2271b1;
+    cursor: pointer;
+}
+
+.asq-add-followup-answer {
+    font-size: 12px;
+    margin-top: 6px;
+}
