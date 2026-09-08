@@ -1075,3 +1075,24 @@ i.asq-loading-icon {
 .asq-dn-panel--active {
     display: block;
 }
+
+/* === Stage 3 placeholder: raw answer readout === */
+.asq-answers-readout {
+    margin: 0 auto;
+    max-width: 640px;
+}
+.asq-answer-readout-row {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--asq-border, #e0e0e0);
+}
+.asq-answer-readout-q {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--asq-text-light, #666);
+    margin-bottom: 4px;
+}
+.asq-answer-readout-a {
+    font-size: 16px;
+    color: var(--asq-text, #333);
+    line-height: 1.5;
+}

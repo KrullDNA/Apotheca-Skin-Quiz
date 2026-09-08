@@ -28,19 +28,6 @@ class ASQ_Frontend {
             ASQ_VERSION,
             true
         );
-
-        wp_register_script(
-            'asq-add-to-cart',
-            ASQ_PLUGIN_URL . 'frontend/js/asq-add-to-cart.js',
-            array( 'jquery' ),
-            ASQ_VERSION,
-            true
-        );
-
-        wp_localize_script( 'asq-add-to-cart', 'asqAddToCart', array(
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'nonce'    => wp_create_nonce( 'asq_frontend_nonce' ),
-        ) );
     }
 
     public function render_shortcode( $atts ) {
@@ -64,12 +51,8 @@ class ASQ_Frontend {
 
         $options = get_post_meta( $finder_id, '_asq_options', true );
         $options = wp_parse_args( (array) $options, array(
-            'listing_template' => '',
-            'cols_desktop'     => 3,
-            'cols_tablet'      => 2,
-            'cols_mobile'      => 1,
-            'enable_consent'   => 1,
-            'consent_text'     => '',
+            'enable_consent' => 1,
+            'consent_text'   => '',
         ) );
 
         $consent_text = ! empty( $options['consent_text'] )
@@ -78,14 +61,6 @@ class ASQ_Frontend {
 
         wp_enqueue_style( 'asq-frontend' );
         wp_enqueue_script( 'asq-frontend' );
-        wp_enqueue_script( 'asq-add-to-cart' );
-
-        // Pre-load WooCommerce variation scripts – results may contain
-        // variable products with swatch widgets that need these.
-        if ( function_exists( 'WC' ) ) {
-            wp_enqueue_script( 'wc-add-to-cart' );
-            wp_enqueue_script( 'wc-add-to-cart-variation' );
-        }
 
         // Check if we have a results session token in the URL.
         $results_token = isset( $_GET['asq_results'] ) ? preg_replace( '/[^a-zA-Z0-9]/', '', $_GET['asq_results'] ) : '';
@@ -109,17 +84,14 @@ class ASQ_Frontend {
                 'skip_email'   => __( 'Skip & View Results', 'apotheca-skin-quiz' ),
                 'send_results' => __( 'Send Results', 'apotheca-skin-quiz' ),
                 'view_results' => __( 'View Results', 'apotheca-skin-quiz' ),
-                'loading'      => __( 'Finding your perfect products…', 'apotheca-skin-quiz' ),
+                'loading'      => __( 'Reading your answers…', 'apotheca-skin-quiz' ),
                 'email_label'  => __( 'Get your results sent to your inbox', 'apotheca-skin-quiz' ),
                 'email_placeholder' => __( 'Enter your email address', 'apotheca-skin-quiz' ),
                 'email_success'=> __( 'Results sent!', 'apotheca-skin-quiz' ),
                 'email_fail'   => __( 'Failed to send. Please try again.', 'apotheca-skin-quiz' ),
-                'your_results' => __( 'Your Recommended Products', 'apotheca-skin-quiz' ),
+                'your_results' => __( 'Your responses', 'apotheca-skin-quiz' ),
                 'start_over'   => __( 'Start Over', 'apotheca-skin-quiz' ),
                 'complete'     => __( 'Complete', 'apotheca-skin-quiz' ),
-                'add_to_cart'  => __( 'Add to Cart', 'apotheca-skin-quiz' ),
-                'tab_day'      => __( 'Day', 'apotheca-skin-quiz' ),
-                'tab_night'    => __( 'Night', 'apotheca-skin-quiz' ),
             ),
         ) );
 

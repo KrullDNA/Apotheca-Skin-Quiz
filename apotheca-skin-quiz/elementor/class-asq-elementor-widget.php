@@ -32,7 +32,7 @@ class ASQ_Elementor_Widget extends Widget_Base {
     }
 
     public function get_keywords() {
-        return array( 'product', 'finder', 'quiz', 'woocommerce', 'recommendation' );
+        return array( 'quiz', 'skin', 'apotheca', 'skincare', 'finder' );
     }
 
     /* ═══════════════════════════════════════
@@ -51,8 +51,6 @@ class ASQ_Elementor_Widget extends Widget_Base {
         $this->section_style_email_screen();
         $this->section_style_loading_screen();
         $this->section_style_results();
-        // DN tab styling is now managed via the Finder CPT metabox
-        // (see ASQ_Admin::render_dn_styles_box) and read from post meta.
         $this->section_style_result_cards();
     }
 

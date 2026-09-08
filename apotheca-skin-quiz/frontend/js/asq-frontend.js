@@ -502,7 +502,7 @@
 
             $msg.text('Sending…').css('color', '#666').show();
 
-            // Step 1: Save session to get a unique results URL.
+            // Step 1: Save the session so the results have a shareable URL.
             $.post(asqFrontend.ajax_url, {
                 action: 'asq_save_results_session',
                 nonce: asqFrontend.nonce,
@@ -520,48 +520,24 @@
                 var sep = baseUrl.indexOf('?') !== -1 ? '&' : '?';
                 var resultsUrl = baseUrl + sep + 'asq_results=' + encodeURIComponent(token);
 
-                // Step 2: Compute results to get product IDs for the email.
-                self.computeResults(function (data) {
-                    var consent = self.$emailScreen.find('.asq-consent-checkbox').is(':checked') ? 1 : 0;
+                var consent = self.$emailScreen.find('.asq-consent-checkbox').is(':checked') ? 1 : 0;
 
-                    var postData = {
-                        action: 'asq_send_results_email',
-                        nonce: asqFrontend.nonce,
-                        finder_id: self.finderId,
-                        email: email,
-                        product_ids: data.product_ids,
-                        results_url: resultsUrl,
-                        consent: consent,
-                        // Raw answers so the server can log the submission
-                        // with readable question/answer text.
-                        answers: JSON.stringify(self.answers),
-                        followup_answers: JSON.stringify(self.followupAnswers)
-                    };
-
-                    // Pass full product data (with variation + category info) for the email.
-                    if (data.products && data.products.length) {
-                        postData.products_data = JSON.stringify(data.products);
+                // Step 2: Send the branded result email (answers only, no products).
+                $.post(asqFrontend.ajax_url, {
+                    action: 'asq_send_results_email',
+                    nonce: asqFrontend.nonce,
+                    finder_id: self.finderId,
+                    email: email,
+                    results_url: resultsUrl,
+                    consent: consent,
+                    answers: JSON.stringify(self.answers),
+                    followup_answers: JSON.stringify(self.followupAnswers)
+                }, function (res) {
+                    if (res.success) {
+                        window.location.href = resultsUrl;
+                    } else {
+                        $msg.text(res.data && res.data.message ? res.data.message : asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
                     }
-
-                    // Pass Day/Night grouping if present.
-                    if (data.day_night) {
-                        postData.day_night = 1;
-                        if (data.day_products && data.day_products.length) {
-                            postData.day_products = JSON.stringify(data.day_products);
-                        }
-                        if (data.night_products && data.night_products.length) {
-                            postData.night_products = JSON.stringify(data.night_products);
-                        }
-                    }
-
-                    $.post(asqFrontend.ajax_url, postData, function (res) {
-                        if (res.success) {
-                            // Redirect to results page immediately.
-                            window.location.href = resultsUrl;
-                        } else {
-                            $msg.text(res.data && res.data.message ? res.data.message : asqFrontend.i18n.email_fail).css('color', '#b32d2e').show();
-                        }
-                    });
                 });
             });
         },
@@ -640,447 +616,50 @@
                 answers: JSON.stringify(this.answers),
                 followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {
-                // Debug: log the full AJAX response
-                if (ASQ_DEBUG && res && res.data && res.data.debug) {
-                    console.group('[Apotheca Skin Quiz] Debug – compute_results');
-                    for (var i = 0; i < res.data.debug.length; i++) {
-                        console.log(res.data.debug[i]);
-                    }
-                    if (res.data.day_night) {
-                        console.log('day_night:', true);
-                        console.log('day_listing_html length:', (res.data.day_listing_html || '').length);
-                        console.log('night_listing_html length:', (res.data.night_listing_html || '').length);
-                    } else {
-                        console.log('listing_html length:', (res.data.listing_html || '').length);
-                    }
-                    console.log('products count:', (res.data.products || []).length);
-                    console.log('styles count:', (res.data.styles || []).length);
-                    console.log('scripts count:', (res.data.scripts || []).length);
-                    console.groupEnd();
-                }
-
                 if (res.success) {
                     callback(res.data);
                 } else {
-                    console.warn('[Apotheca Skin Quiz] AJAX returned success=false', res);
-                    callback({ products: [], product_ids: [], listing_html: '', options: self.options });
+                    console.warn('[Apotheca Skin Quiz] compute_results returned success=false', res);
+                    callback({ answers: [], options: self.options });
                 }
             }).fail(function (jqXHR, textStatus, errorThrown) {
                 console.error('[Apotheca Skin Quiz] AJAX FAILED:', textStatus, errorThrown);
-                console.error('[Apotheca Skin Quiz] Response text:', jqXHR.responseText ? jqXHR.responseText.substring(0, 1000) : '(empty)');
-                callback({ products: [], product_ids: [], listing_html: '', options: self.options });
+                callback({ answers: [], options: self.options });
             });
         },
 
-        /* ───────── Results screen ───────── */
+        /* ───────── Results screen (Stage 3 placeholder) ───────── */
 
         showResults: function (data) {
-            var self = this;
             this.$loadingScreen.hide();
+            this._cachedResults = data;
 
-            asqLog('[Apotheca Skin Quiz] showResults – styles:', (data.styles || []).length,
-                'scripts:', (data.scripts || []).length,
-                'day_night:', !!data.day_night);
+            this.renderAnswers(data.answers || []);
 
-            // Load CSS first (shared across both modes).
-            this.loadStyles(data.styles || []);
-
-            // Safari fix: make the results screen visible (but transparent) BEFORE
-            // injecting content.  Safari doesn't calculate layout for elements
-            // inserted into a display:none container, so CrocoBlock templates
-            // render as blank.  By making the container visible first, Safari
-            // properly lays out the injected HTML.
+            // Reveal the results screen and announce it to screen readers.
+            this.$resultsScreen.attr('aria-live', 'polite');
             this.$resultsScreen.css({ opacity: 0, display: 'block' });
-
-            if (data.day_night) {
-                this.renderDayNightResults(data);
-            } else {
-                // If CrocoBlock listing HTML was returned and has real content, use it
-                var listingHtml = (data.listing_html || '').trim();
-                if (listingHtml.length > 0) {
-                    this.$resultsScreen.find('.asq-results-container').html(listingHtml);
-
-                    this.loadScripts(data.scripts || [], function () {
-                        self.initDynamicContent();
-                        // Force reflow so Safari paints the new content.
-                        void self.$resultsScreen[0].offsetHeight;
-                    });
-                } else {
-                    this.renderFallbackResults(data);
-                }
-            }
-
-            // Animate in (from the already-visible but transparent state).
             this.$resultsScreen.animate({ opacity: 1 }, 300);
         },
 
-        /* ───────── Day / Night tabbed results ───────── */
-
-        renderDayNightResults: function (data) {
-            var self = this;
-            var $container = this.$resultsScreen.find('.asq-results-container');
-
-            var dayLabel   = this.$el.data('tab-day-label')   || asqFrontend.i18n.tab_day   || 'Day';
-            var nightLabel = this.$el.data('tab-night-label') || asqFrontend.i18n.tab_night || 'Night';
-
-            var html = '<div class="asq-dn-tabs">';
-            html += '<button type="button" class="asq-dn-tab asq-dn-tab--active" data-tab="day">' + this.escHtml(dayLabel) + '</button>';
-            html += '<button type="button" class="asq-dn-tab" data-tab="night">' + this.escHtml(nightLabel) + '</button>';
-            html += '</div>';
-
-            html += '<div class="asq-dn-panel asq-dn-panel--day asq-dn-panel--active">';
-            html += (data.day_listing_html || '').trim() || '<div class="asq-dn-fallback" data-set="day"></div>';
-            html += '</div>';
-
-            html += '<div class="asq-dn-panel asq-dn-panel--night">';
-            html += (data.night_listing_html || '').trim() || '<div class="asq-dn-fallback" data-set="night"></div>';
-            html += '</div>';
-
-            $container.html(html);
-
-            // Render fallback cards if no CrocoBlock HTML for a set.
-            if ($container.find('.asq-dn-fallback[data-set="day"]').length) {
-                this.renderFallbackInto($container.find('.asq-dn-fallback[data-set="day"]'), data.day_products || [], data);
-            }
-            if ($container.find('.asq-dn-fallback[data-set="night"]').length) {
-                this.renderFallbackInto($container.find('.asq-dn-fallback[data-set="night"]'), data.night_products || [], data);
-            }
-
-            // Tab click handler.
-            $container.find('.asq-dn-tab').on('click', function () {
-                var tab = $(this).data('tab');
-                $container.find('.asq-dn-tab').removeClass('asq-dn-tab--active');
-                $(this).addClass('asq-dn-tab--active');
-                $container.find('.asq-dn-panel').removeClass('asq-dn-panel--active');
-                $container.find('.asq-dn-panel--' + tab).addClass('asq-dn-panel--active');
-            });
-
-            // Init dynamic content (scripts, Elementor widgets, etc.)
-            this.loadScripts(data.scripts || [], function () {
-                self.initDynamicContent();
-                // Force reflow so Safari paints CrocoBlock templates.
-                void self.$resultsScreen[0].offsetHeight;
-            });
-        },
-
-        renderFallbackInto: function ($target, products, data) {
-            var opts = data.options || this.options;
-            var colsD = opts.cols_desktop || 3;
-            var colsT = opts.cols_tablet || 2;
-            var colsM = opts.cols_mobile || 1;
-
-            var html = '<div class="asq-results-grid asq-cols-d-' + colsD + ' asq-cols-t-' + colsT + ' asq-cols-m-' + colsM + '">';
-            for (var i = 0; i < products.length; i++) {
-                var p = products[i];
-                html += '<div class="asq-result-card">';
-                if (p.match_pct) {
-                    html += '<span class="asq-match-badge">' + p.match_pct + '% match</span>';
-                }
-                if (p.image) {
-                    html += '<a href="' + this.escHtml(p.permalink) + '" class="asq-result-img-link"><img src="' + this.escHtml(p.image) + '" alt="' + this.escHtml(p.name) + '"></a>';
-                }
-                html += '<div class="asq-result-info">';
-                html += '<h4 class="asq-result-name"><a href="' + this.escHtml(p.permalink) + '">' + this.escHtml(p.name) + '</a></h4>';
-                html += '<div class="asq-result-price">' + p.price + '</div>';
-                html += '</div></div>';
-            }
-            html += '</div>';
-            $target.html(html);
-        },
-
         /**
-         * Dynamically load CSS files that were enqueued server-side
-         * during CrocoBlock listing rendering (e.g. swatch plugin CSS).
+         * Placeholder result: render the raw answer set so the whole flow can
+         * be tested end to end before the findings engine is built.
          */
-        loadStyles: function (urls) {
-            asqLog('[Apotheca Skin Quiz] loadStyles:', urls.length, 'URL(s)', urls);
-            for (var i = 0; i < urls.length; i++) {
-                // Check if this stylesheet is already loaded.
-                var alreadyLoaded = false;
-                var links = document.getElementsByTagName('link');
-                var base = urls[i].split('?')[0];
-                for (var k = 0; k < links.length; k++) {
-                    if (links[k].href && links[k].href.split('?')[0].indexOf(base.replace(/^https?:/, '')) !== -1) {
-                        alreadyLoaded = true;
-                        break;
-                    }
+        renderAnswers: function (answers) {
+            var html = '<div class="asq-answers-readout">';
+            if (answers && answers.length) {
+                for (var i = 0; i < answers.length; i++) {
+                    var row = answers[i] || {};
+                    var ans = (row.answers || []).join(', ');
+                    html += '<div class="asq-answer-readout-row">';
+                    html += '<div class="asq-answer-readout-q">' + this.escHtml(row.question || '') + '</div>';
+                    html += '<div class="asq-answer-readout-a">' + this.escHtml(ans) + '</div>';
+                    html += '</div>';
                 }
-                if (alreadyLoaded) {
-                    asqLog('[Apotheca Skin Quiz] CSS already loaded, skipping:', urls[i]);
-                    continue;
-                }
-                var link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = urls[i];
-                document.head.appendChild(link);
-                asqLog('[Apotheca Skin Quiz] Loaded CSS:', urls[i]);
+            } else {
+                html += '<p>' + this.escHtml('No answers were recorded.') + '</p>';
             }
-        },
-
-        /**
-         * Dynamically load JS files that were enqueued server-side,
-         * then invoke the callback once all scripts have loaded.
-         */
-        loadScripts: function (urls, callback) {
-            asqLog('[Apotheca Skin Quiz] loadScripts:', urls.length, 'URL(s)', urls);
-
-            // Filter out scripts already present on the page.
-            var toLoad = [];
-            var existingSrcs = [];
-            var scripts = document.getElementsByTagName('script');
-            for (var k = 0; k < scripts.length; k++) {
-                if (scripts[k].src) {
-                    existingSrcs.push(scripts[k].src.split('?')[0]);
-                }
-            }
-            for (var i = 0; i < urls.length; i++) {
-                var base = urls[i].split('?')[0];
-                if (existingSrcs.indexOf(base) === -1) {
-                    toLoad.push(urls[i]);
-                } else {
-                    asqLog('[Apotheca Skin Quiz] Script already on page, skipping:', urls[i]);
-                }
-            }
-
-            asqLog('[Apotheca Skin Quiz] Scripts to load (after dedup):', toLoad.length);
-
-            if (!toLoad.length) {
-                callback();
-                return;
-            }
-
-            var loaded = 0;
-            for (var j = 0; j < toLoad.length; j++) {
-                var s = document.createElement('script');
-                s.src = toLoad[j];
-                s.onload = s.onerror = function () {
-                    var ok = this.readyState ? /loaded|complete/.test(this.readyState) : true;
-                    asqLog('[Apotheca Skin Quiz] Script ' + (ok ? 'loaded' : 'FAILED') + ':', this.src);
-                    if (++loaded >= toLoad.length) {
-                        callback();
-                    }
-                };
-                document.body.appendChild(s);
-            }
-        },
-
-        /**
-         * Re-initialize third-party widget JS on dynamically loaded content.
-         *
-         * After AJAX-injected listing HTML is in the DOM and any missing
-         * scripts have been loaded, trigger Elementor, WooCommerce and
-         * JetEngine initialization so swatch plugins, add-to-cart buttons
-         * and other interactive widgets work correctly.
-         */
-        initDynamicContent: function () {
-            var $container = this.$resultsScreen.find('.asq-results-container');
-
-            asqLog('[Apotheca Skin Quiz] initDynamicContent – starting');
-
-            // 1. Add .product class to listing items that contain variation forms.
-            //    Swatch plugins (FiF VSE) use $wrap.closest('.product') to scope
-            //    their search for the correct variation form.
-            $container.find('.variations_form').each(function () {
-                $(this).closest(
-                    '.jet-listing-grid__item,' +
-                    '.jet-listing-grid__items > div,' +
-                    '.asq-result-item,' +
-                    '.elementor-widget-wrap,' +
-                    '.e-con-inner,' +
-                    '.e-con'
-                ).addClass('product');
-            });
-
-            // 2. Initialize WooCommerce variation forms (must happen before
-            //    swatch initialization so WC events are ready).
-            var formsInited = 0;
-            if ($.fn.wc_variation_form) {
-                $container.find('.variations_form').each(function () {
-                    formsInited++;
-                    $(this).wc_variation_form().trigger('check_variations');
-                });
-            }
-            asqLog('[Apotheca Skin Quiz] WC variation forms initialized:', formsInited);
-
-            // 3. Ensure Elementor widget hooks are registered.
-            //    When a swatch plugin's JS is loaded dynamically (after
-            //    elementor/frontend/init already fired), its hook registration
-            //    code inside $(window).on('elementor/frontend/init') hasn't
-            //    executed.  Re-triggering causes plugins to register their
-            //    element_ready handlers.
-            if (window.elementorFrontend) {
-                $(window).trigger('elementor/frontend/init');
-            }
-
-            // 4. Trigger Elementor's element_ready for all widgets in the
-            //    container.  This calls registered handlers (e.g. initWrap
-            //    in FiF VSE) which initialise the swatch UI.
-            //    New DOM elements don't have the fifVseInit flag so initWrap
-            //    will run on them; already-initialised elements are skipped.
-            var widgetsTriggered = 0;
-            if (window.elementorFrontend && elementorFrontend.elementsHandler) {
-                if (typeof elementorFrontend.elementsHandler.runReadyTrigger === 'function') {
-                    $container.find('.elementor-widget').each(function () {
-                        widgetsTriggered++;
-                        try {
-                            elementorFrontend.elementsHandler.runReadyTrigger($(this));
-                        } catch (e) {
-                            console.warn('[Apotheca Skin Quiz] runReadyTrigger error:', e);
-                        }
-                    });
-                }
-            }
-            asqLog('[Apotheca Skin Quiz] Elementor widgets triggered:', widgetsTriggered);
-
-            // 5. Log widget types for debugging
-            if (ASQ_DEBUG) {
-                $container.find('[data-widget_type]').each(function () {
-                    console.log('[Apotheca Skin Quiz] Widget data-widget_type:', $(this).data('widget_type'));
-                });
-                $container.find('.elementor-widget').each(function () {
-                    var classes = $(this).attr('class') || '';
-                    var widgetClass = classes.match(/elementor-widget-(\S+)/);
-                    console.log('[Apotheca Skin Quiz] Widget class:', widgetClass ? widgetClass[1] : '(none)',
-                        'has data-widget_type:', !!$(this).attr('data-widget_type'));
-                });
-            }
-
-            // 6. Fallback: directly fire element_ready hooks by widget type.
-            //    Handles cases where runReadyTrigger is unavailable or the
-            //    Elementor version uses a different internal API.
-            if (window.elementorFrontend && elementorFrontend.hooks) {
-                $container.find('[data-widget_type]').each(function () {
-                    var widgetType = $(this).data('widget_type');
-                    if (widgetType) {
-                        try {
-                            elementorFrontend.hooks.doAction(
-                                'frontend/element_ready/' + widgetType, $(this)
-                            );
-                            elementorFrontend.hooks.doAction(
-                                'frontend/element_ready/global', $(this)
-                            );
-                        } catch (e) {}
-                    }
-                });
-            }
-
-            // 7. Direct swatch widget initialization fallback.
-            //    If the swatch plugin's JS was loaded dynamically, its
-            //    $(document).ready() should have already initialised swatches
-            //    (jQuery fires ready callbacks immediately when the document
-            //    is already ready).  Check for fifVseInit and only act on
-            //    un-initialised wrappers.
-            var $swatchWraps = $container.find('.fif-vse-swatches');
-            if ($swatchWraps.length) {
-                asqLog('[Apotheca Skin Quiz] Direct swatch init: found', $swatchWraps.length, 'wrapper(s)');
-                $swatchWraps.each(function () {
-                    var $wrap = $(this);
-
-                    // Already initialised – skip to avoid double-init.
-                    if ($wrap.data('fifVseInit')) {
-                        asqLog('[Apotheca Skin Quiz] Swatch already initialised, skipping');
-                        return;
-                    }
-
-                    // Try firing the swatch widget's specific Elementor hook.
-                    var $widget = $wrap.closest('.elementor-widget');
-                    if ($widget.length && window.elementorFrontend && elementorFrontend.hooks) {
-                        asqLog('[Apotheca Skin Quiz] Firing swatch hook on widget',
-                            'widget_type:', $widget.attr('data-widget_type'));
-                        try {
-                            elementorFrontend.hooks.doAction(
-                                'frontend/element_ready/fif_vse_variation_swatches.default',
-                                $widget
-                            );
-                        } catch (e) {
-                            console.warn('[Apotheca Skin Quiz] Swatch hook error:', e);
-                        }
-                    }
-                });
-            }
-
-            // 8. Trigger generic post-load event (many WP plugins listen for this)
-            $(document.body).trigger('post-load');
-
-            // WooCommerce cart fragments refresh
-            $(document.body).trigger('wc_fragment_refresh');
-
-            // 9. Safari repaint fix: force a synchronous layout recalculation
-            //    so WebKit renders dynamically injected CrocoBlock listing content.
-            //    Without this, Safari may show a blank area because it skipped
-            //    layout for content that was inserted while the container was
-            //    hidden (display:none).
-            var container = $container[0];
-            if (container) {
-                void container.offsetHeight;
-                // Double-RAF ensures the browser paints before we consider
-                // content fully initialised (works around WebKit paint coalescing).
-                requestAnimationFrame(function () {
-                    requestAnimationFrame(function () {
-                        void container.offsetHeight;
-                    });
-                });
-            }
-
-            asqLog('[Apotheca Skin Quiz] initDynamicContent – complete');
-        },
-
-        renderFallbackResults: function (data) {
-            var opts = data.options || this.options;
-            var colsD = opts.cols_desktop || 3;
-            var colsT = opts.cols_tablet || 2;
-            var colsM = opts.cols_mobile || 1;
-            var isBeauty = (opts.finder_type === 'beauty');
-
-            var html = '<div class="asq-results-grid asq-cols-d-' + colsD + ' asq-cols-t-' + colsT + ' asq-cols-m-' + colsM + '">';
-            var products = data.products || [];
-
-            for (var i = 0; i < products.length; i++) {
-                var p = products[i];
-                html += '<div class="asq-result-card">';
-
-                // Match badge
-                if (p.match_pct) {
-                    html += '<span class="asq-match-badge">' + p.match_pct + '% match</span>';
-                }
-
-                if (p.image) {
-                    html += '<a href="' + this.escHtml(p.permalink) + '" class="asq-result-img-link"><img src="' + this.escHtml(p.image) + '" alt="' + this.escHtml(p.name) + '"></a>';
-                }
-                html += '<div class="asq-result-info">';
-                html += '<h4 class="asq-result-name"><a href="' + this.escHtml(p.permalink) + '">' + this.escHtml(p.name) + '</a></h4>';
-                html += '<div class="asq-result-price">' + p.price + '</div>';
-
-                // Recommendation reasons based on user answers
-                if (p.reasons && p.reasons.length) {
-                    html += '<ul class="asq-match-reasons">';
-                    for (var r = 0; r < p.reasons.length; r++) {
-                        html += '<li>' + this.escHtml(p.reasons[r]) + '</li>';
-                    }
-                    html += '</ul>';
-                }
-
-                // Add to cart button
-                if (isBeauty && p.is_variable && p.variation_id) {
-                    // Beauty mode: add specific variation to cart
-                    html += '<button type="button" class="asq-btn asq-btn-primary asq-atc-btn asq-atc-variation-btn"'
-                        + ' data-product_id="' + p.id + '"'
-                        + ' data-variation_id="' + p.variation_id + '"';
-                    // Include variation attributes as data attrs
-                    if (p.variation_attributes) {
-                        for (var attrKey in p.variation_attributes) {
-                            if (p.variation_attributes.hasOwnProperty(attrKey)) {
-                                html += ' data-' + this.escHtml(attrKey) + '="' + this.escHtml(p.variation_attributes[attrKey]) + '"';
-                            }
-                        }
-                    }
-                    html += '>' + asqFrontend.i18n.add_to_cart + '</button>';
-                }
-
-                html += '</div>';
-                html += '</div>';
-            }
-
             html += '</div>';
             this.$resultsScreen.find('.asq-results-container').html(html);
         },
@@ -1133,16 +712,6 @@
         $('.asq-finder').each(function () {
             new SkinQuiz($(this));
         });
-    });
-
-    /* ───────── PF Add to Cart: quantity sync ───────── */
-
-    // When the user changes the quantity input, update the sibling
-    // button's data-quantity so WooCommerce's AJAX add-to-cart
-    // picks up the correct amount.
-    $(document).on('change input', '.asq-atc-qty', function () {
-        var qty = parseInt($(this).val(), 10) || 1;
-        $(this).siblings('.asq-atc-btn').attr('data-quantity', qty);
     });
 
 })(jQuery);
