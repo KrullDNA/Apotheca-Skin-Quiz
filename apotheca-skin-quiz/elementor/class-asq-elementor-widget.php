@@ -101,6 +101,20 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator'   => 'before',
         ) );
 
+        // The Ingredient List Decoder page. Native URL control, so it offers the
+        // site's own pages rather than needing the address typed. Left empty by
+        // default; when empty the F12 result renders without a link.
+        $this->add_control( 'decoder_url', array(
+            'label'       => __( 'Ingredient List Decoder page', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::URL,
+            'placeholder' => __( 'Search for a page or paste a URL', 'apotheca-skin-quiz' ),
+            'description' => __( 'Where the "not sure what is in your products" result sends people. It opens in a new tab. Leave empty to show that line without a link.', 'apotheca-skin-quiz' ),
+            'options'     => false,
+            'default'     => array( 'url' => '' ),
+            'label_block' => true,
+            'separator'   => 'before',
+        ) );
+
         $this->end_controls_section();
     }
 
@@ -1808,6 +1822,15 @@ class ASQ_Elementor_Widget extends Widget_Base {
         $results_heading = trim( $settings['results_heading_text'] ?? '' );
         if ( $results_heading ) {
             $shortcode_atts .= ' results_heading="' . esc_attr( $results_heading ) . '"';
+        }
+
+        // The Ingredient List Decoder page for the F12 result link.
+        $decoder_url = '';
+        if ( isset( $settings['decoder_url']['url'] ) && is_string( $settings['decoder_url']['url'] ) ) {
+            $decoder_url = trim( $settings['decoder_url']['url'] );
+        }
+        if ( $decoder_url ) {
+            $shortcode_atts .= ' decoder_url="' . esc_url( $decoder_url ) . '"';
         }
 
         // Read DN labels from finder post meta instead of Elementor settings

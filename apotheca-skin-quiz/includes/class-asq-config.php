@@ -79,6 +79,8 @@ class ASQ_Config {
                     'text'        => $a['text'],
                     'description' => '',
                     'image'       => '',
+                    // Optional supporting line shown under the option (e.g. Q5 E).
+                    'note'        => isset( $a['note'] ) ? $a['note'] : '',
                 );
             }
             $out[] = array(

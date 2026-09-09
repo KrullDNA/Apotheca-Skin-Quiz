@@ -21,6 +21,7 @@
         this.finderId   = $el.data('finder-id');
         this.questions  = $el.data('questions') || [];
         this.options    = $el.data('options') || {};
+        this.decoderUrl = $el.data('decoder-url') || '';  // F12 link target, per widget
         this.current    = 0;
         this.answers    = {};  // { questionIndex: [answerIndices] }
         this.followupAnswers = {};  // { "qi_ai": [followupAnswerIndices] }
@@ -210,6 +211,12 @@
                         html += '<span class="asq-checkbox"><span class="asq-check-icon"></span></span>';
                     }
                     html += '</div>';
+                    // Supporting copy under an option (e.g. Q5 "I'm not sure").
+                    // Sits outside the clickable option, so it reads as a note,
+                    // not a call to action.
+                    if (b.note) {
+                        html += '<p class="asq-answer-note">' + this.escHtml(b.note) + '</p>';
+                    }
                 }
                 html += '</div>';
                 html += '</div>';
@@ -692,6 +699,7 @@
                     consent: (consentEnabled ? (ticked ? 1 : 0) : 1),
                     consent_text: consentText,
                     asq_hp: $gate.find('.asq-hp-input').val() || '',
+                    decoder_url: self.decoderUrl,
                     answers: JSON.stringify(self.answers),
                     followup_answers: JSON.stringify(self.followupAnswers)
                 }, function (res) {
@@ -790,6 +798,7 @@
                 nonce: asqFrontend.nonce,
                 finder_id: this.finderId,
                 source_id: asqFrontend.source_id,
+                decoder_url: this.decoderUrl,
                 answers: JSON.stringify(this.answers),
                 followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {

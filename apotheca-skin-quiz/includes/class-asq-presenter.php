@@ -19,6 +19,21 @@ class ASQ_Presenter {
     /** @var array|null Cached phrasing. */
     protected static $phrasing = null;
 
+    /**
+     * @var string The Ingredient List Decoder page URL for the F12 link, set
+     * per render from the Elementor control. Empty means the {decoder} words
+     * render as plain text rather than a broken link.
+     */
+    protected static $decoder_url = '';
+
+    /**
+     * The internal handshake between the quiz and the decoder. Hard-coded on
+     * both sides on purpose: a name read from settings in two places is a quiet
+     * way to break the link.
+     */
+    const DECODER_FROM_KEY   = 'from';
+    const DECODER_FROM_VALUE = 'skin-quiz';
+
     /** Max entries in the "one or two things worth trying" section. */
     const MAX_TRIES = 2;
 
@@ -37,7 +52,10 @@ class ASQ_Presenter {
      * @return array Either a gate reading ( is_gate => true, heading, body )
      *               or a normal reading ( is_gate => false, sections => [...] ).
      */
-    public static function build_reading( $findings, $answers, $articles = array() ) {
+    public static function build_reading( $findings, $answers, $articles = array(), $decoder_url = '' ) {
+        // Set for this render; resolve() reads it when it meets a {decoder} token.
+        self::$decoder_url = is_string( $decoder_url ) ? $decoder_url : '';
+
         $p    = self::phrasing();
         $amap = self::answer_map( $answers );
 
@@ -110,8 +128,8 @@ class ASQ_Presenter {
     /**
      * Build and render the reading to HTML in one step.
      */
-    public static function render( $findings, $answers, $articles = array() ) {
-        return self::render_html( self::build_reading( $findings, $answers, $articles ) );
+    public static function render( $findings, $answers, $articles = array(), $decoder_url = '' ) {
+        return self::render_html( self::build_reading( $findings, $answers, $articles, $decoder_url ) );
     }
 
     /**
@@ -152,8 +170,8 @@ class ASQ_Presenter {
      *
      * @return array is_gate => bool; for a gate: html; otherwise intro, rest.
      */
-    public static function render_split( $findings, $answers, $articles = array() ) {
-        $reading = self::build_reading( $findings, $answers, $articles );
+    public static function render_split( $findings, $answers, $articles = array(), $decoder_url = '' ) {
+        $reading = self::build_reading( $findings, $answers, $articles, $decoder_url );
 
         if ( ! empty( $reading['is_gate'] ) ) {
             return array( 'is_gate' => true, 'html' => self::render_html( $reading ) );
@@ -272,6 +290,18 @@ class ASQ_Presenter {
 
         $text = str_replace( '{em}', '<span class="asq-reading-em">', $text );
         $text = str_replace( '{/em}', '</span>', $text );
+
+        // The decoder link. Built after texturize so the URL is never mangled.
+        // With no page set, the wrapped words become plain text, never a link
+        // with a broken or empty href.
+        if ( '' !== self::$decoder_url ) {
+            $href = esc_url( add_query_arg( self::DECODER_FROM_KEY, self::DECODER_FROM_VALUE, self::$decoder_url ) );
+            $open = '<a class="asq-reading-link" href="' . $href . '" target="_blank" rel="noopener noreferrer">';
+            $text = str_replace( '{decoder}', $open, $text );
+            $text = str_replace( '{/decoder}', '</a>', $text );
+        } else {
+            $text = str_replace( array( '{decoder}', '{/decoder}' ), '', $text );
+        }
 
         return $text;
     }
