@@ -10,6 +10,10 @@
  * Tokens the renderer understands inside any sentence:
  *   {a:Q2}      her actual answer to that question, woven into the sentence
  *   {em}…{/em}  an emphasised phrase (the reframe), styled with the accent
+ *   {decoder}…{/decoder}  a link to the Ingredient List Decoder page set on the
+ *                Elementor widget, opening in a new tab with from=skin-quiz
+ *                appended. If no page is set, the wrapped words render as plain
+ *                text, never a broken or empty link.
  *
  * Straight apostrophes here are fine: the renderer runs the text through
  * wptexturize(), so the reader sees proper curly quotes.
@@ -105,6 +109,14 @@ return array(
             'describing'   => __( "A good deal of what you've described tracks with the weather and your surroundings rather than with your skin itself. Skin that changes with the seasons, or that shifted around a move or a change in climate, is usually responding to what's around it.", 'apotheca-skin-quiz' ),
             'probably_not' => __( "It's tempting to overhaul the whole routine when this happens. More often the routine was fine, and it's the conditions around it that changed.", 'apotheca-skin-quiz' ),
             'worth_trying' => array( 'key' => 'adjust_seasonally', 'text' => __( "Treat it as something to adjust rather than fix. A lighter touch in humidity, a little more protection in cold or wind, and less pressure on any one product to solve it.", 'apotheca-skin-quiz' ) ),
+        ),
+
+        // F12 ── Not sure what's in her products. Not a fault. Carries the
+        // Ingredient List Decoder link in worth_trying via the {decoder} token,
+        // which the renderer turns into a link (or plain text if no URL is set).
+        'F12' => array(
+            'describing'   => __( "You've told us you're not entirely sure what's in your products, and honestly, that's the most common answer we get. Acids and retinoids turn up in toners, cleansers and moisturisers as readily as in anything labelled a treatment, so it's easy to be {em}using more than you think{/em}, without putting a foot wrong.", 'apotheca-skin-quiz' ),
+            'worth_trying' => array( 'key' => 'decode_products', 'text' => __( "The simplest next step is to find out what you're actually using. {decoder}Paste your products into our Ingredient List Decoder{/decoder} and it'll tell you what's in there, in plain English.", 'apotheca-skin-quiz' ) ),
         ),
 
         // F10 ── Nothing obviously wrong. Deliberately short.

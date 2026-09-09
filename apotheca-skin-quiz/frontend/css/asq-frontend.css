@@ -220,6 +220,17 @@
     gap: 10px;
 }
 
+/* Supporting copy under an option (e.g. Q5 "I'm not sure"). Reads as a quiet
+   note, not a button: no card, no border, smaller and muted, nudged in a little
+   and sitting tight under its option. */
+.asq-answer-note {
+    margin: -2px 0 0;
+    padding: 0 4px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--asq-text-light, #777);
+}
+
 .asq-answer-option--text {
     background: var(--asq-card-bg);
     border: 2px solid transparent;
@@ -1109,6 +1120,17 @@ i.asq-loading-icon {
 .asq-reading-em {
     font-weight: 600;
     color: var(--asq-reading-accent, inherit);
+}
+/* The Ingredient List Decoder link inside the F12 reading. */
+.asq-reading-link {
+    color: var(--asq-reading-accent, inherit);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.asq-reading-link:focus-visible {
+    outline: 2px solid var(--asq-reading-accent, var(--asq-accent, #333));
+    outline-offset: 2px;
 }
 /* The medical gate reading, styled calmly rather than as an alert. */
 .asq-reading--gate .asq-reading-heading--gate {

@@ -111,6 +111,10 @@ class ASQ_Ajax {
         // The page the quiz sits on, so read-next can exclude it.
         $source_id = absint( $_POST['source_id'] ?? 0 );
 
+        // The Ingredient List Decoder page, set on the Elementor widget and
+        // passed through so the F12 reading can link to it.
+        $decoder_url = isset( $_POST['decoder_url'] ) ? esc_url_raw( wp_unslash( $_POST['decoder_url'] ) ) : '';
+
         // Run the findings engine.
         $findings = ASQ_Engine::evaluate( (array) $answers );
         $is_gate  = ( 1 === count( $findings ) && isset( $findings[0]['id'] ) && 'F11' === $findings[0]['id'] );
@@ -131,7 +135,7 @@ class ASQ_Ajax {
         // Normal reading, with up to three read-next articles, split so the
         // first section shows and the rest sits behind the email gate.
         $articles = ASQ_Read_Next::for_findings( $findings, $source_id );
-        $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles );
+        $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url );
 
         wp_send_json_success( array(
             'is_gate'           => false,

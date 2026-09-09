@@ -11,9 +11,14 @@
  *               A condition is a question id plus the answer keys that satisfy
  *               it, e.g. array( 'q' => 'Q6', 'keys' => array( 'A' ) ) means
  *               "Q6 = A". Keys are the A/B/C... option letters from the
- *               question config.
+ *               question config. A condition may add 'min' => N to require at
+ *               least N of its keys to be ticked (multi-select), e.g.
+ *               array( 'q' => 'Q5', 'keys' => array( 'A','B','C' ), 'min' => 2 ).
  *   suppresses  Findings removed when this one fires (same problem described
- *               twice). F5 suppresses F2, F3 suppresses F4.
+ *               twice). An entry is either a plain finding id (unconditional,
+ *               e.g. F5 suppresses F2), or an array
+ *               array( 'id' => 'F4', 'when' => <clause> ) that suppresses only
+ *               when the clause matches (F3 suppresses F4 only when Q5=A).
  *   priority    Lower fires and is listed first.
  *   fallback    Special findings that depend on what else fired:
  *                 none_fired      fires only when nothing else did (F10)
@@ -55,14 +60,21 @@ return array(
             'suppresses' => array( 'F2' ),
         ),
 
-        // F3 ── Over-exfoliation. Q4=A, or Q4=D with (Q6=A or B).
+        // F3 ── Over-exfoliation. Q4=A, or Q5=A (an acid or exfoliant is in use)
+        // with (Q6=A or B). It no longer fires on uncertainty alone.
         'F3' => array(
             'priority'   => 2,
             'fires_when' => array(
                 array( array( 'q' => 'Q4', 'keys' => array( 'A' ) ) ),
-                array( array( 'q' => 'Q4', 'keys' => array( 'D' ) ), array( 'q' => 'Q6', 'keys' => array( 'A', 'B' ) ) ),
+                array( array( 'q' => 'Q5', 'keys' => array( 'A' ) ), array( 'q' => 'Q6', 'keys' => array( 'A', 'B' ) ) ),
             ),
-            'suppresses' => array( 'F4' ),
+            // Suppress F4 only when an acid is actually in use (Q5=A). Then
+            // over-exfoliation and "too many actives" are the same behaviour and
+            // F3 is the sharper reading. Where several actives are in use but no
+            // acid, both findings are true and separate, and both must render.
+            'suppresses' => array(
+                array( 'id' => 'F4', 'when' => array( array( 'q' => 'Q5', 'keys' => array( 'A' ) ) ) ),
+            ),
         ),
 
         // F2 ── The cleanser is the problem. Q2=A or D (suppressed by F5).
@@ -82,13 +94,14 @@ return array(
             ),
         ),
 
-        // F4 ── Too many actives at once. Q5=C or D, or Q1=C, or Q4=D (suppressed by F3).
+        // F4 ── Too many actives at once. Two or more of Q5 A/B/C ticked (acid,
+        // retinoid, vitamin C), or Q1=C. It no longer fires on uncertainty
+        // alone. Suppressed by F3 only when Q5=A is also ticked.
         'F4' => array(
             'priority'   => 5,
             'fires_when' => array(
-                array( array( 'q' => 'Q5', 'keys' => array( 'C', 'D' ) ) ),
+                array( array( 'q' => 'Q5', 'keys' => array( 'A', 'B', 'C' ), 'min' => 2 ) ),
                 array( array( 'q' => 'Q1', 'keys' => array( 'C' ) ) ),
-                array( array( 'q' => 'Q4', 'keys' => array( 'D' ) ) ),
             ),
         ),
 
@@ -116,6 +129,17 @@ return array(
             'fires_when' => array(
                 array( array( 'q' => 'Q8', 'keys' => array( 'D' ) ) ),
                 array( array( 'q' => 'Q8', 'keys' => array( 'A' ) ), array( 'q' => 'Q9', 'keys' => array( 'A' ) ) ),
+            ),
+        ),
+
+        // F12 ── Not sure what's in her products. Q5=E, or Q4=D. This is the
+        // finding that "I don't know" now feeds, instead of being read as
+        // evidence of a fault. It carries the Ingredient List Decoder link.
+        'F12' => array(
+            'priority'   => 9,
+            'fires_when' => array(
+                array( array( 'q' => 'Q5', 'keys' => array( 'E' ) ) ),
+                array( array( 'q' => 'Q4', 'keys' => array( 'D' ) ) ),
             ),
         ),
 

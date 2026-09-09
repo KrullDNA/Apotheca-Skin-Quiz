@@ -204,6 +204,7 @@ class ASQ_Email {
         $consent_text = isset( $_POST['consent_text'] ) ? sanitize_textarea_field( wp_unslash( $_POST['consent_text'] ) ) : '';
         $source_id    = absint( $_POST['source_id'] ?? 0 );
         $source       = $source_id ? get_permalink( $source_id ) : $results_url;
+        $decoder_url  = isset( $_POST['decoder_url'] ) ? esc_url_raw( wp_unslash( $_POST['decoder_url'] ) ) : '';
 
         // Recompute the findings on the server, so what is stored and pushed is
         // trustworthy, then resolve the answers to readable text.
@@ -227,7 +228,7 @@ class ASQ_Email {
         // Build the reading and email it: the four sections flat, read-next
         // with thumbnails, a working unsubscribe, and the consent wording.
         $articles = ASQ_Read_Next::for_findings( $findings, 0 );
-        $reading  = ASQ_Presenter::build_reading( $findings, $answers, $articles );
+        $reading  = ASQ_Presenter::build_reading( $findings, $answers, $articles, $decoder_url );
         $body     = $this->build_email_body( $finder_title, $reading, array(
             'results_url'     => $results_url,
             'unsubscribe_url' => ASQ_Leads::unsubscribe_url( $lead_id ),
@@ -432,7 +433,7 @@ class ASQ_Email {
                 $html .= $this->build_readnext( isset( $section['articles'] ) ? $section['articles'] : array(), $accent );
             } else {
                 foreach ( (array) $section['paragraphs'] as $para ) {
-                    $html .= '<p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#333;">' . $this->email_inline( $para ) . '</p>';
+                    $html .= '<p style="margin:0 0 14px;font-size:16px;line-height:1.6;color:#333;">' . $this->email_inline( $para, $accent ) . '</p>';
                 }
             }
         }
@@ -495,15 +496,22 @@ class ASQ_Email {
     }
 
     /**
-     * A reading paragraph is trusted, authored HTML with our emphasis span.
-     * Swap the class-based span for an inline style so it shows in email.
+     * A reading paragraph is trusted, authored HTML with our emphasis span and,
+     * for F12, the decoder link. Email clients ignore classes, so swap both for
+     * inline styles. The link takes the quiz's accent colour.
      */
-    private function email_inline( $para ) {
-        return str_replace(
+    private function email_inline( $para, $accent = '#000000' ) {
+        $para = str_replace(
             '<span class="asq-reading-em">',
             '<span style="font-weight:600;">',
             (string) $para
         );
+        $para = str_replace(
+            '<a class="asq-reading-link" ',
+            '<a style="color:' . esc_attr( $accent ) . ';font-weight:600;text-decoration:underline;" ',
+            $para
+        );
+        return $para;
     }
 
     /**

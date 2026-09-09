@@ -37,6 +37,7 @@ class ASQ_Frontend {
             'results_heading'  => '',
             'tab_day_label'    => '',
             'tab_night_label'  => '',
+            'decoder_url'      => '',
         ), $atts, 'apotheca_skin_quiz' );
 
         $finder_id = absint( $atts['id'] );
@@ -133,6 +134,11 @@ class ASQ_Frontend {
             }
             if ( ! empty( $atts['tab_night_label'] ) ) {
                 echo ' data-tab-night-label="' . esc_attr( $atts['tab_night_label'] ) . '"';
+            }
+            // The Ingredient List Decoder page, for the F12 link. Per widget, so
+            // it rides on the wrapper rather than the shared localised object.
+            if ( ! empty( $atts['decoder_url'] ) ) {
+                echo ' data-decoder-url="' . esc_url( $atts['decoder_url'] ) . '"';
             }
         ?>>
 

@@ -69,11 +69,26 @@ class ASQ_Engine {
             }
         }
 
-        // 3. Suppression: a fired finding removes those it suppresses.
+        // 3. Suppression: a fired finding removes those it suppresses. An entry
+        // may be a plain id (unconditional) or [ 'id' => …, 'when' => <clause> ]
+        // that only suppresses when the clause matches the answers.
         foreach ( $ordinary as $id => $def ) {
-            if ( isset( $fired[ $id ] ) && ! empty( $def['suppresses'] ) ) {
-                foreach ( $def['suppresses'] as $suppressed ) {
-                    unset( $fired[ $suppressed ] );
+            if ( ! isset( $fired[ $id ] ) || empty( $def['suppresses'] ) ) {
+                continue;
+            }
+            foreach ( $def['suppresses'] as $entry ) {
+                if ( is_array( $entry ) ) {
+                    $sid  = isset( $entry['id'] ) ? $entry['id'] : '';
+                    $when = isset( $entry['when'] ) ? $entry['when'] : array();
+                    if ( '' === $sid ) {
+                        continue;
+                    }
+                    if ( ! empty( $when ) && null === self::first_matching_clause( array( $when ), $selected ) ) {
+                        continue; // condition not met, so no suppression
+                    }
+                    unset( $fired[ $sid ] );
+                } else {
+                    unset( $fired[ $entry ] );
                 }
             }
         }
@@ -148,10 +163,13 @@ class ASQ_Engine {
             foreach ( (array) $clause as $cond ) {
                 $qid          = isset( $cond['q'] ) ? $cond['q'] : '';
                 $keys         = isset( $cond['keys'] ) ? (array) $cond['keys'] : array();
+                $min          = isset( $cond['min'] ) ? max( 1, (int) $cond['min'] ) : 1;
                 $chosen       = isset( $selected[ $qid ] ) ? (array) $selected[ $qid ] : array();
                 $matched_keys = array_values( array_intersect( $chosen, $keys ) );
 
-                if ( empty( $matched_keys ) ) {
+                // Default is "any" (min 1); a condition may require two or more
+                // ticked keys, for a multi-select count like "two or more actives".
+                if ( count( $matched_keys ) < $min ) {
                     $clause_ok = false;
                     break;
                 }

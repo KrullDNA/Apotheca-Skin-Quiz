@@ -12,12 +12,13 @@
  *                id          short code (Q1..Q10), for the engine and admin
  *                text        the question shown to her
  *                instruction optional helper line under the question
- *                multiple    true only for the multi-select question (Q10)
+ *                multiple    true for a multi-select question (Q5, Q10)
  *                optional    true if she may decline to answer (Q9)
  *                answers     ordered list; each answer has:
  *                              key       A, B, C ... (for the engine)
  *                              text      the option shown to her
  *                              findings  which findings this option feeds
+ *                              note      optional supporting line under the option
  *                              safe      true for a "none of these" style option
  *
  * The order of questions and answers here IS the order shown on screen, and
@@ -48,6 +49,7 @@ return array(
         'F9'  => __( 'Environmental or seasonal', 'apotheca-skin-quiz' ),
         'F10' => __( 'Nothing obviously wrong', 'apotheca-skin-quiz' ),
         'F11' => __( 'Medical referral', 'apotheca-skin-quiz' ),
+        'F12' => __( "Not sure what's in her products", 'apotheca-skin-quiz' ),
     ),
 
     // Read-next mapping: each finding points at one or two Skin Topic terms,
@@ -72,6 +74,7 @@ return array(
         'F8' => array( 'formulation-and-use-levels', 'clean-and-natural-origin' ),
         'F9' => array( 'hydration', 'barrier-and-sensitivity' ),
         'F10' => array( 'ageing-and-cell-turnover' ),
+        'F12' => array( 'formulation-and-use-levels' ),
     ),
 
     // The gate offers at most one general, non-specific article. One term.
@@ -127,20 +130,27 @@ return array(
                 array( 'key' => 'A', 'text' => __( 'Most days', 'apotheca-skin-quiz' ), 'findings' => array( 'F3' ) ),
                 array( 'key' => 'B', 'text' => __( 'Two or three times a week', 'apotheca-skin-quiz' ), 'findings' => array() ),
                 array( 'key' => 'C', 'text' => __( 'Once a week or less', 'apotheca-skin-quiz' ), 'findings' => array() ),
-                array( 'key' => 'D', 'text' => __( "I'm not sure whether some of my products count", 'apotheca-skin-quiz' ), 'findings' => array( 'F3', 'F4' ) ),
+                // Uncertainty about exfoliation is its own finding now (F12),
+                // not evidence of over-exfoliation or too many actives.
+                array( 'key' => 'D', 'text' => __( "I'm not sure whether some of my products count", 'apotheca-skin-quiz' ), 'findings' => array( 'F12' ) ),
             ),
         ),
 
-        // Q5 ── How many actives.
+        // Q5 ── What she's using now. Multi-select. Option A is deliberately
+        // loose, because many people don't know the term for what they use, so
+        // it must not be tightened. Option E (not sure) is a real answer, not a
+        // non-answer, and feeds its own finding (F12).
         array(
-            'id'       => 'Q5',
-            'text'     => __( 'How many products are you currently using that contain a retinoid, an acid, or vitamin C?', 'apotheca-skin-quiz' ),
-            'multiple' => false,
-            'answers'  => array(
-                array( 'key' => 'A', 'text' => __( 'None that I know of', 'apotheca-skin-quiz' ), 'findings' => array() ),
-                array( 'key' => 'B', 'text' => __( 'One', 'apotheca-skin-quiz' ), 'findings' => array() ),
-                array( 'key' => 'C', 'text' => __( 'Two or three', 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
-                array( 'key' => 'D', 'text' => __( "More than three, or I've lost track", 'apotheca-skin-quiz' ), 'findings' => array( 'F4', 'F5' ) ),
+            'id'          => 'Q5',
+            'text'        => __( 'Which of these are you using at the moment?', 'apotheca-skin-quiz' ),
+            'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
+            'multiple'    => true,
+            'answers'     => array(
+                array( 'key' => 'A', 'text' => __( 'Something with an acid in it, or anything that exfoliates', 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
+                array( 'key' => 'B', 'text' => __( 'A retinoid, retinol or retinal', 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
+                array( 'key' => 'C', 'text' => __( 'Vitamin C', 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
+                array( 'key' => 'D', 'text' => __( 'None of these', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'E', 'text' => __( "I'm not sure what's in my products", 'apotheca-skin-quiz' ), 'findings' => array( 'F12' ), 'note' => __( "Not sure? That's the most common answer. We'll show you how to find out at the end.", 'apotheca-skin-quiz' ) ),
             ),
         ),
 
