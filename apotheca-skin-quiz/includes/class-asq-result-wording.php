@@ -131,7 +131,7 @@ class ASQ_Result_Wording {
                 <?php endforeach; ?>
 
                 <h2><?php esc_html_e( 'Medical gate response', 'apotheca-skin-quiz' ); ?></h2>
-                <p class="description"><?php esc_html_e( 'Shown instead of a reading when an answer trips the safety gate.', 'apotheca-skin-quiz' ); ?></p>
+                <p class="description"><?php esc_html_e( 'Shown instead of a reading when an answer trips the safety gate. In the on-page body you can use {ticked}, which becomes exactly what she flagged, e.g. "a mole or mark that has changed".', 'apotheca-skin-quiz' ); ?></p>
                 <table class="form-table" role="presentation"><tbody>
                     <tr>
                         <th scope="row"><?php esc_html_e( 'Heading', 'apotheca-skin-quiz' ); ?></th>

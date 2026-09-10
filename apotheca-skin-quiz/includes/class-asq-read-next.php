@@ -24,6 +24,14 @@ class ASQ_Read_Next {
     /** Cap for a normal reading. */
     const CAP = 3;
 
+    /**
+     * Option holding manually-entered articles, keyed by finding id (F1..F12)
+     * and 'gate'. Each value is a list of rows: { title, url, desc, image }.
+     * When a fired reading has manual articles they are shown instead of the
+     * auto-pulled posts, so the owner can curate exactly what appears.
+     */
+    const OPTION_ARTICLES = 'asq_readnext_articles';
+
     public function __construct() {
         // Clear the cache whenever a post is saved.
         add_action( 'save_post', array( __CLASS__, 'bump_cache' ) );
@@ -45,6 +53,13 @@ class ASQ_Read_Next {
      * @return array Up to three cards: { title, url, excerpt, thumb }.
      */
     public static function for_findings( $findings, $exclude_id = 0 ) {
+        // Manually-curated articles for the fired readings take priority.
+        $manual = self::manual_for_findings( $findings, self::CAP );
+        if ( ! empty( $manual ) ) {
+            return $manual;
+        }
+
+        // Otherwise, posts tagged with the readings' Skin Topics.
         $slugs = array();
         foreach ( (array) $findings as $f ) {
             $id = isset( $f['id'] ) ? $f['id'] : '';
@@ -59,7 +74,141 @@ class ASQ_Read_Next {
      * Read-next for the medical gate: at most one general article.
      */
     public static function for_gate( $exclude_id = 0 ) {
+        $manual = self::manual_for_gate( 1 );
+        if ( ! empty( $manual ) ) {
+            return $manual;
+        }
         return self::query( ASQ_Config::gate_topics(), $exclude_id, 1 );
+    }
+
+    /* ────────── Manually-curated articles ────────── */
+
+    /** All stored manual articles, keyed by finding id and 'gate'. */
+    public static function articles() {
+        $a = get_option( self::OPTION_ARTICLES, array() );
+        return is_array( $a ) ? $a : array();
+    }
+
+    /**
+     * Turn a stored row into a read-next card. Anything left blank is filled
+     * from the linked article when the URL points to a post on this site: the
+     * featured image becomes the thumbnail, and the post title and excerpt fill
+     * in too. Values entered by hand always win, and an external URL (not a
+     * local post) simply leaves the blanks empty.
+     */
+    protected static function card_from_row( $row ) {
+        if ( ! is_array( $row ) ) {
+            return array( 'title' => '', 'url' => '', 'excerpt' => '', 'thumb' => '' );
+        }
+
+        $title = isset( $row['title'] ) ? $row['title'] : '';
+        $url   = isset( $row['url'] ) ? $row['url'] : '';
+        $desc  = isset( $row['desc'] ) ? $row['desc'] : '';
+        $thumb = isset( $row['image'] ) ? $row['image'] : '';
+
+        if ( '' !== $url && ( '' === $thumb || '' === $title || '' === $desc ) ) {
+            $pid = function_exists( 'url_to_postid' ) ? url_to_postid( $url ) : 0;
+            if ( $pid ) {
+                if ( '' === $thumb ) {
+                    $featured = get_the_post_thumbnail_url( $pid, 'medium' );
+                    if ( $featured ) {
+                        $thumb = $featured;
+                    }
+                }
+                if ( '' === $title ) {
+                    $title = get_the_title( $pid );
+                }
+                if ( '' === $desc ) {
+                    $desc = self::excerpt( $pid );
+                }
+            }
+        }
+
+        return array(
+            'title'   => $title,
+            'url'     => $url,
+            'excerpt' => $desc,
+            'thumb'   => $thumb,
+        );
+    }
+
+    /** Manual cards for the fired readings, in order, deduped by URL, capped. */
+    protected static function manual_for_findings( $findings, $cap ) {
+        $all   = self::articles();
+        $cards = array();
+        $seen  = array();
+        foreach ( (array) $findings as $f ) {
+            $id = isset( $f['id'] ) ? $f['id'] : '';
+            if ( '' === $id || empty( $all[ $id ] ) ) {
+                continue;
+            }
+            foreach ( (array) $all[ $id ] as $row ) {
+                $card = self::card_from_row( $row );
+                if ( '' === $card['url'] || isset( $seen[ $card['url'] ] ) ) {
+                    continue;
+                }
+                $seen[ $card['url'] ] = true;
+                $cards[]              = $card;
+                if ( count( $cards ) >= $cap ) {
+                    return $cards;
+                }
+            }
+        }
+        return $cards;
+    }
+
+    /** Manual cards for the medical gate. */
+    protected static function manual_for_gate( $cap ) {
+        $all = self::articles();
+        if ( empty( $all['gate'] ) ) {
+            return array();
+        }
+        $cards = array();
+        foreach ( (array) $all['gate'] as $row ) {
+            $card = self::card_from_row( $row );
+            if ( '' === $card['url'] ) {
+                continue;
+            }
+            $cards[] = $card;
+            if ( count( $cards ) >= $cap ) {
+                break;
+            }
+        }
+        return $cards;
+    }
+
+    /**
+     * Sanitise and store the manual articles from the admin screen. Empty rows
+     * (no title and no URL) are dropped.
+     *
+     * @param array $raw The asq_articles POST array (already unslashed).
+     */
+    public static function save_articles( $raw ) {
+        $clean = array();
+        foreach ( (array) $raw as $fid => $rows ) {
+            $fid = sanitize_text_field( $fid );
+            if ( ! is_array( $rows ) ) {
+                continue;
+            }
+            $list = array();
+            foreach ( $rows as $row ) {
+                if ( ! is_array( $row ) ) {
+                    continue;
+                }
+                $title = isset( $row['title'] ) ? sanitize_text_field( $row['title'] ) : '';
+                $url   = isset( $row['url'] ) ? esc_url_raw( trim( (string) $row['url'] ) ) : '';
+                $desc  = isset( $row['desc'] ) ? sanitize_text_field( $row['desc'] ) : '';
+                $image = isset( $row['image'] ) ? esc_url_raw( trim( (string) $row['image'] ) ) : '';
+                if ( '' === $title && '' === $url ) {
+                    continue; // an empty row
+                }
+                $list[] = array( 'title' => $title, 'url' => $url, 'desc' => $desc, 'image' => $image );
+            }
+            if ( $list ) {
+                $clean[ $fid ] = $list;
+            }
+        }
+        update_option( self::OPTION_ARTICLES, $clean, false );
     }
 
     /**

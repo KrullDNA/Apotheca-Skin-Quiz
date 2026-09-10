@@ -27,6 +27,12 @@ class ASQ_Presenter {
     protected static $decoder_url = '';
 
     /**
+     * @var string The concern(s) she ticked on the medical-gate question, for
+     * the {ticked} token in the gate copy. Empty outside a gate reading.
+     */
+    protected static $gate_ticked = '';
+
+    /**
      * The internal handshake between the quiz and the decoder. Hard-coded on
      * both sides on purpose: a name read from settings in two places is a quiet
      * way to break the link.
@@ -203,13 +209,16 @@ class ASQ_Presenter {
     public static function build_reading( $findings, $answers, $articles = array(), $decoder_url = '' ) {
         // Set for this render; resolve() reads it when it meets a {decoder} token.
         self::$decoder_url = is_string( $decoder_url ) ? $decoder_url : '';
+        self::$gate_ticked = ''; // populated only for a gate reading, below
 
         $p    = self::phrasing();
         $amap = self::answer_map( $answers );
 
-        // The medical gate replaces the whole reading.
+        // The medical gate replaces the whole reading. Name back exactly what
+        // she flagged, via the {ticked} token, so she isn't left guessing.
         foreach ( (array) $findings as $f ) {
             if ( isset( $f['id'] ) && 'F11' === $f['id'] ) {
+                self::$gate_ticked = self::gate_ticked_text( $answers );
                 return array(
                     'is_gate'  => true,
                     'heading'  => $p['gate']['heading'],
@@ -415,10 +424,58 @@ class ASQ_Presenter {
     }
 
     /**
+     * The concern(s) she ticked on the medical-gate question, excluding the
+     * safe "none of these" option, each lower-cased for mid-sentence use and
+     * joined naturally ("a, b and c"). Empty if nothing qualifying was ticked.
+     */
+    protected static function gate_ticked_text( $answers ) {
+        $meta = ASQ_Config::gate_meta();
+        if ( ! $meta ) {
+            return '';
+        }
+        $qi        = (int) $meta['qi'];
+        $safe      = (int) $meta['safe'];
+        $questions = ASQ_Config::questions();
+        if ( empty( $questions[ $qi ]['answers'] ) ) {
+            return '';
+        }
+
+        $selected = isset( $answers[ $qi ] ) ? (array) $answers[ $qi ] : array();
+        $texts    = array();
+        foreach ( $selected as $ai ) {
+            $ai = (int) $ai;
+            if ( $ai === $safe || ! isset( $questions[ $qi ]['answers'][ $ai ]['text'] ) ) {
+                continue;
+            }
+            $t = wp_strip_all_tags( $questions[ $qi ]['answers'][ $ai ]['text'] );
+            if ( '' !== $t ) {
+                $texts[] = self::lcfirst_mb( $t );
+            }
+        }
+        return self::natural_join( $texts );
+    }
+
+    /** Join a list as "a", "a and b", or "a, b and c". */
+    protected static function natural_join( $items ) {
+        $items = array_values( array_filter( $items, function ( $x ) { return '' !== $x; } ) );
+        $n     = count( $items );
+        if ( 0 === $n ) {
+            return '';
+        }
+        if ( 1 === $n ) {
+            return $items[0];
+        }
+        $last = array_pop( $items );
+        $sep  = ( 1 === count( $items ) ) ? ' ' : ', ';
+        return implode( ', ', $items ) . $sep . __( 'and', 'apotheca-skin-quiz' ) . ' ' . $last;
+    }
+
+    /**
      * Resolve the tokens in one sentence and texturise it.
      *
      *   {al:Q2}  her answer, first letter lower-cased for mid-sentence use
      *   {a:Q2}   her answer, as written
+     *   {ticked} what she ticked on the medical-gate question (gate copy only)
      *   {em}…{/em} an emphasised phrase
      */
     protected static function resolve( $raw, $amap ) {
@@ -432,6 +489,13 @@ class ASQ_Presenter {
         $text = preg_replace_callback( '/\{a:(Q\d+)\}/', function ( $m ) use ( $amap ) {
             return isset( $amap[ $m[1] ] ) ? $amap[ $m[1] ] : '';
         }, $text );
+
+        // What she ticked on the gate question. Falls back to a general phrase
+        // if, somehow, nothing qualifying is set, so the sentence never breaks.
+        if ( false !== strpos( $text, '{ticked}' ) ) {
+            $ticked = '' !== self::$gate_ticked ? self::$gate_ticked : __( 'one of the things you ticked', 'apotheca-skin-quiz' );
+            $text   = str_replace( '{ticked}', $ticked, $text );
+        }
 
         // Curl quotes and tidy punctuation to house style.
         if ( function_exists( 'wptexturize' ) ) {

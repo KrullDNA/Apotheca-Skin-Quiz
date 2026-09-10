@@ -1309,6 +1309,23 @@ i.asq-loading-icon {
     color: var(--asq-reading-accent, inherit);
 }
 
+/* Stacked card layout (image on top), chosen in Elementor for a multi-column
+   grid. The default remains the horizontal "row" card above. */
+.asq-rn-layout-stacked .asq-readnext-card {
+    flex-direction: column;
+}
+.asq-rn-layout-stacked .asq-readnext-thumb {
+    flex: 0 0 auto;
+    width: 100%;
+}
+.asq-rn-layout-stacked .asq-readnext-thumb img {
+    width: 100%;
+    height: 160px;
+}
+.asq-rn-layout-stacked .asq-readnext-body {
+    padding: 14px 16px;
+}
+
 /* === Visible focus states for the result sections (keyboard access) === */
 /* The result title / gate region receive focus on load but shouldn't show a
    focus ring, since focus lands there programmatically, not by tabbing. */
