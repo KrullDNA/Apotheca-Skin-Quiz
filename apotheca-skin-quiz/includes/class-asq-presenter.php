@@ -254,7 +254,9 @@ class ASQ_Presenter {
         foreach ( ASQ_Config::selected_keys( (array) $answers ) as $qid => $keys ) {
             $texts = array();
             foreach ( (array) $keys as $key ) {
-                $t = ASQ_Config::answer_text( $qid, $key );
+                // Woven into prose, so strip any styling HTML the option text
+                // may carry and keep the sentence clean.
+                $t = wp_strip_all_tags( ASQ_Config::answer_text( $qid, $key ) );
                 if ( '' !== $t ) {
                     $texts[] = $t;
                 }

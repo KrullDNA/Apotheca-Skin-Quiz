@@ -1839,14 +1839,14 @@ class ASQ_Elementor_Widget extends Widget_Base {
                 <div class="asq-question-slide asq-slide-in">
                     <div class="asq-text-layout">
                         <div class="asq-text-left">
-                            <h2 class="asq-question-text"><?php echo esc_html( $q['text'] ); ?></h2>
-                            <p class="asq-question-instruction"><?php echo esc_html( $instr ); ?></p>
+                            <h2 class="asq-question-text"><?php echo ASQ_Config::kses_copy( $q['text'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitised inline HTML ?></h2>
+                            <p class="asq-question-instruction"><?php echo ASQ_Config::kses_copy( $instr ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitised inline HTML ?></p>
                         </div>
                         <div class="asq-text-right">
                             <div class="asq-answers-grid asq-answers-grid--text">
                                 <?php foreach ( $answers as $idx => $a ) : ?>
                                     <div class="asq-answer-option asq-answer-option--text<?php echo 0 === $idx ? ' asq-selected' : ''; ?>">
-                                        <span class="asq-answer-text"><?php echo esc_html( $a['text'] ?? '' ); ?></span>
+                                        <span class="asq-answer-text"><?php echo ASQ_Config::kses_copy( $a['text'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitised inline HTML ?></span>
                                         <?php if ( $multiple ) : ?>
                                             <span class="asq-checkbox"><span class="asq-check-icon"></span></span>
                                         <?php endif; ?>

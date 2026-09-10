@@ -172,9 +172,11 @@
             var instructionText = q.instruction || (q.multiple ? 'Select all that apply' : 'Select one option');
 
             if (hasImages) {
-                // Image grid layout
-                html += '<h2 class="asq-question-text asq-question-text--center">' + this.escHtml(q.text) + '</h2>';
-                html += '<p class="asq-question-instruction asq-question-instruction--center">' + this.escHtml(instructionText) + '</p>';
+                // Image grid layout. Question, instruction and option text may
+                // carry a little safe inline HTML (e.g. a styling span); it is
+                // admin-authored and server-sanitised, so it renders as HTML.
+                html += '<h2 class="asq-question-text asq-question-text--center">' + q.text + '</h2>';
+                html += '<p class="asq-question-instruction asq-question-instruction--center">' + instructionText + '</p>';
                 html += '<div class="asq-answers-grid asq-answers-grid--images">';
                 for (var i = 0; i < q.answers.length; i++) {
                     var a = q.answers[i];
@@ -183,9 +185,9 @@
                     if (a.image) {
                         html += '<div class="asq-answer-img-wrap"><img src="' + this.escHtml(a.image) + '" alt="' + this.escHtml(a.text) + '"></div>';
                     }
-                    html += '<span class="asq-answer-text">' + this.escHtml(a.text) + '</span>';
+                    html += '<span class="asq-answer-text">' + a.text + '</span>';
                     if (a.description) {
-                        html += '<span class="asq-answer-desc">' + this.escHtml(a.description) + '</span>';
+                        html += '<span class="asq-answer-desc">' + a.description + '</span>';
                     }
                     if (q.multiple) {
                         html += '<span class="asq-checkbox"><span class="asq-check-icon"></span></span>';
@@ -197,8 +199,8 @@
                 // Two-column text layout
                 html += '<div class="asq-text-layout">';
                 html += '<div class="asq-text-left">';
-                html += '<h2 class="asq-question-text">' + this.escHtml(q.text) + '</h2>';
-                html += '<p class="asq-question-instruction">' + this.escHtml(instructionText) + '</p>';
+                html += '<h2 class="asq-question-text">' + q.text + '</h2>';
+                html += '<p class="asq-question-instruction">' + instructionText + '</p>';
                 html += '</div>';
                 html += '<div class="asq-text-right">';
                 html += '<div class="asq-answers-grid asq-answers-grid--text">';
@@ -206,7 +208,7 @@
                     var b = q.answers[j];
                     var sel = this.isSelected(idx, j) ? ' asq-selected' : '';
                     html += '<div class="asq-answer-option asq-answer-option--text' + sel + noPtr + '" data-ai="' + j + '">';
-                    html += '<span class="asq-answer-text">' + this.escHtml(b.text) + '</span>';
+                    html += '<span class="asq-answer-text">' + b.text + '</span>';
                     if (q.multiple) {
                         html += '<span class="asq-checkbox"><span class="asq-check-icon"></span></span>';
                     }
@@ -215,7 +217,7 @@
                     // Sits outside the clickable option, so it reads as a note,
                     // not a call to action.
                     if (b.note) {
-                        html += '<p class="asq-answer-note">' + this.escHtml(b.note) + '</p>';
+                        html += '<p class="asq-answer-note">' + b.note + '</p>';
                     }
                 }
                 html += '</div>';
