@@ -626,14 +626,17 @@
             document.cookie = this.cookieName() + '=1; expires=' + d.toUTCString() + '; path=/; SameSite=Lax';
         },
 
-        /* ───────── Email gate ───────── */
+        /* ───────── Optional "email me a copy" form ───────── */
 
-        // Build the inline gate form that sits between the first section and
-        // the rest of the reading.
-        gateHtml: function () {
+        // Build the optional email-copy form that sits below the full reading.
+        // It captures a consented lead, but never hides any of the reading.
+        emailCopyHtml: function () {
             var i = asqFrontend.i18n;
-            var h = '<div class="asq-gate">';
+            var h = '<div class="asq-gate asq-emailcopy">';
             h += '<p class="asq-gate-lead">' + this.escHtml(i.email_gate_lead) + '</p>';
+            if (i.email_copy_sub) {
+                h += '<p class="asq-emailcopy-sub">' + this.escHtml(i.email_copy_sub) + '</p>';
+            }
             h += '<div class="asq-gate-form">';
             h += '<input type="email" class="asq-email-input" autocomplete="email" aria-label="' + this.escHtml(i.email_placeholder) + '" placeholder="' + this.escHtml(i.email_placeholder) + '">';
             if (asqFrontend.consent_enabled) {
@@ -706,7 +709,7 @@
                     followup_answers: JSON.stringify(self.followupAnswers)
                 }, function (res) {
                     if (res.success) {
-                        self.unlockReading();
+                        self.onEmailCopySent();
                     } else if (res.data && res.data.rate_limited) {
                         // Reached the per-IP limit: show it calmly, not as an error.
                         $msg.text(res.data.message).css('color', '#666').show();
@@ -719,14 +722,15 @@
             });
         },
 
-        // Reveal the rest of the reading and remember this device.
-        unlockReading: function () {
+        // The copy has been sent. Confirm it and remember this device so she
+        // isn't asked again. Nothing is revealed, the reading was already shown.
+        onEmailCopySent: function () {
             this.setUnlocked();
             this.clearState();
             var $gate = this.$el.find('.asq-gate');
-            $gate.find('.asq-gate-form').hide();
+            $gate.find('.asq-gate-form').slideUp(200);
+            $gate.find('.asq-emailcopy-sub').hide();
             $gate.find('.asq-gate-lead').text(asqFrontend.i18n.sent_confirm);
-            this.$resultsScreen.find('.asq-reading-rest').slideDown(300);
         },
 
         /**
@@ -831,22 +835,24 @@
                 $container.html((data.reading_html || '').trim());
             } else {
                 $title.show();
-                // A reading in two parts: the first section is always shown; the
-                // rest sits behind the email gate unless she is already unlocked
-                // (came from her emailed link, or has the returning-visitor cookie).
+                // The whole reading is shown to everyone, no gate. The result
+                // still arrives in two parts from the server (intro + rest); we
+                // simply render them together.
                 var intro = (data.reading_intro_html || '').trim();
                 var rest  = (data.reading_rest_html || '').trim();
-                var unlocked = !!asqFrontend.results_token || this.isUnlocked();
 
                 var html = '<div class="asq-reading">';
                 html += intro;
-                if (!unlocked && rest) {
-                    html += this.gateHtml();
-                    html += '<div class="asq-reading-rest" style="display:none;">' + rest + '</div>';
-                } else {
-                    html += '<div class="asq-reading-rest">' + rest + '</div>';
-                }
+                html += '<div class="asq-reading-rest">' + rest + '</div>';
                 html += '</div>';
+
+                // Below the reading, offer an optional "email me a copy" form.
+                // It never hides anything. Skip it if she came from her own
+                // emailed link, or already asked for a copy on this device.
+                if (!asqFrontend.results_token && !this.isUnlocked()) {
+                    html += this.emailCopyHtml();
+                }
+
                 $container.html(html);
                 this.syncConsent();
             }

@@ -68,7 +68,7 @@ class ASQ_Frontend {
         // The exchange, stated up front near the first question.
         $exchange_text = ! empty( $options['exchange_text'] )
             ? $options['exchange_text']
-            : __( "At the end, add your email to see your full reading. We'll send you a copy and the odd note worth reading. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' );
+            : __( "At the end you'll get your full reading to read right here. If you'd like a copy by email, you can add your address then. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' );
 
         wp_enqueue_style( 'asq-frontend' );
         wp_enqueue_script( 'asq-frontend' );
@@ -101,10 +101,11 @@ class ASQ_Frontend {
                 'loading'           => __( 'Reading your answers…', 'apotheca-skin-quiz' ),
                 'email_placeholder' => __( 'Enter your email address', 'apotheca-skin-quiz' ),
                 'email_fail'        => __( 'Failed to send. Please try again.', 'apotheca-skin-quiz' ),
-                'email_gate_lead'   => __( 'See the rest of your reading', 'apotheca-skin-quiz' ),
-                'send_reading'      => __( 'Email me my reading', 'apotheca-skin-quiz' ),
+                'email_gate_lead'   => __( 'Want your reading by email?', 'apotheca-skin-quiz' ),
+                'email_copy_sub'    => __( "We'll send you a copy to keep, plus the odd note worth reading. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' ),
+                'send_reading'      => __( 'Email me a copy', 'apotheca-skin-quiz' ),
                 'consent_hint'      => __( 'Tick the box so we can send it.', 'apotheca-skin-quiz' ),
-                'sent_confirm'      => __( "Sent. Here's the rest of your reading.", 'apotheca-skin-quiz' ),
+                'sent_confirm'      => __( 'Sent. Check your inbox for your copy.', 'apotheca-skin-quiz' ),
                 'your_results'      => __( 'Your reading', 'apotheca-skin-quiz' ),
                 'start_over'        => __( 'Start over', 'apotheca-skin-quiz' ),
                 'complete'          => __( 'Complete', 'apotheca-skin-quiz' ),

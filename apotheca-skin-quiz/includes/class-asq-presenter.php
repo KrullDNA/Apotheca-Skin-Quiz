@@ -37,11 +37,159 @@ class ASQ_Presenter {
     /** Max entries in the "one or two things worth trying" section. */
     const MAX_TRIES = 2;
 
+    /**
+     * The option holding editable result wording, overlaid on the code copy in
+     * asq-phrasing.php. Only wording is stored; the tokens ({a:Qn}, {em}…{/em},
+     * {decoder}…{/decoder}) live inside the wording and are preserved verbatim.
+     */
+    const OPTION_PHRASING = 'asq_result_copy';
+
     public static function phrasing() {
         if ( null === self::$phrasing ) {
-            self::$phrasing = require ASQ_PLUGIN_DIR . 'includes/asq-phrasing.php';
+            $base           = require ASQ_PLUGIN_DIR . 'includes/asq-phrasing.php';
+            self::$phrasing = self::apply_phrasing_overrides( $base );
         }
         return self::$phrasing;
+    }
+
+    /** The raw code defaults, without overrides, for the editor and diffing. */
+    public static function phrasing_defaults() {
+        return require ASQ_PLUGIN_DIR . 'includes/asq-phrasing.php';
+    }
+
+    /** The stored result-wording overrides, or an empty array. */
+    public static function phrasing_overrides() {
+        $saved = get_option( self::OPTION_PHRASING, array() );
+        return is_array( $saved ) ? $saved : array();
+    }
+
+    /**
+     * Overlay saved result wording on the code defaults. Section headings, the
+     * read-next lines, the gate copy and each finding's paragraphs can be
+     * replaced; a finding's "worth trying" keeps its grouping key from code so
+     * de-duplication still works, only the text changes.
+     */
+    protected static function apply_phrasing_overrides( $p ) {
+        $ov = get_option( self::OPTION_PHRASING, array() );
+        if ( ! is_array( $ov ) || empty( $ov ) ) {
+            return $p;
+        }
+
+        if ( ! empty( $ov['sections'] ) && is_array( $ov['sections'] ) ) {
+            foreach ( $ov['sections'] as $k => $v ) {
+                if ( '' !== $v && isset( $p['sections'][ $k ] ) ) {
+                    $p['sections'][ $k ] = $v;
+                }
+            }
+        }
+        foreach ( array( 'read_next_intro', 'read_more' ) as $k ) {
+            if ( ! empty( $ov[ $k ] ) ) {
+                $p[ $k ] = $ov[ $k ];
+            }
+        }
+        if ( ! empty( $ov['gate'] ) && is_array( $ov['gate'] ) ) {
+            foreach ( $ov['gate'] as $k => $v ) {
+                if ( '' !== $v ) {
+                    $p['gate'][ $k ] = $v;
+                }
+            }
+        }
+        if ( ! empty( $ov['findings'] ) && is_array( $ov['findings'] ) ) {
+            foreach ( $ov['findings'] as $fid => $fields ) {
+                if ( ! is_array( $fields ) ) {
+                    continue;
+                }
+                foreach ( array( 'describing', 'probably_not' ) as $k ) {
+                    if ( isset( $fields[ $k ] ) && '' !== $fields[ $k ] ) {
+                        $p['findings'][ $fid ][ $k ] = $fields[ $k ];
+                    }
+                }
+                if ( isset( $fields['worth_trying'] ) && '' !== $fields['worth_trying'] ) {
+                    $key = isset( $p['findings'][ $fid ]['worth_trying']['key'] )
+                        ? $p['findings'][ $fid ]['worth_trying']['key']
+                        : $fid;
+                    $p['findings'][ $fid ]['worth_trying'] = array( 'key' => $key, 'text' => $fields['worth_trying'] );
+                }
+            }
+        }
+
+        return $p;
+    }
+
+    /**
+     * Sanitise and store result-wording overrides from the admin screen. Tokens
+     * are plain-text markers, so textarea sanitising keeps them intact. Only
+     * values that differ from the code default are stored, so a blank field, or
+     * one left at the default, reverts to the built-in copy.
+     *
+     * @param array $raw The asq_result POST array (already unslashed).
+     */
+    public static function save_phrasing_overrides( $raw ) {
+        $def   = self::phrasing_defaults();
+        $clean = array();
+
+        // Section headings.
+        if ( ! empty( $raw['sections'] ) && is_array( $raw['sections'] ) ) {
+            foreach ( $raw['sections'] as $k => $v ) {
+                $v = sanitize_text_field( $v );
+                if ( '' !== $v && isset( $def['sections'][ $k ] ) && $v !== $def['sections'][ $k ] ) {
+                    $clean['sections'][ $k ] = $v;
+                }
+            }
+        }
+
+        // Read-next lines.
+        foreach ( array( 'read_next_intro', 'read_more' ) as $k ) {
+            if ( isset( $raw[ $k ] ) ) {
+                $v = sanitize_text_field( $raw[ $k ] );
+                if ( '' !== $v && $v !== ( $def[ $k ] ?? '' ) ) {
+                    $clean[ $k ] = $v;
+                }
+            }
+        }
+
+        // Medical gate copy.
+        if ( ! empty( $raw['gate'] ) && is_array( $raw['gate'] ) ) {
+            foreach ( $raw['gate'] as $k => $v ) {
+                $v = sanitize_textarea_field( $v );
+                if ( '' !== $v && isset( $def['gate'][ $k ] ) && $v !== $def['gate'][ $k ] ) {
+                    $clean['gate'][ $k ] = $v;
+                }
+            }
+        }
+
+        // Each finding's paragraphs.
+        if ( ! empty( $raw['findings'] ) && is_array( $raw['findings'] ) ) {
+            foreach ( $raw['findings'] as $fid => $fields ) {
+                if ( ! is_array( $fields ) || ! isset( $def['findings'][ $fid ] ) ) {
+                    continue;
+                }
+                $entry = array();
+                foreach ( array( 'describing', 'probably_not' ) as $k ) {
+                    if ( ! isset( $fields[ $k ] ) ) {
+                        continue;
+                    }
+                    $v   = sanitize_textarea_field( $fields[ $k ] );
+                    $cur = $def['findings'][ $fid ][ $k ] ?? '';
+                    if ( '' !== $v && $v !== $cur ) {
+                        $entry[ $k ] = $v;
+                    }
+                }
+                if ( isset( $fields['worth_trying'] ) ) {
+                    $v   = sanitize_textarea_field( $fields['worth_trying'] );
+                    $cur = $def['findings'][ $fid ]['worth_trying']['text'] ?? '';
+                    if ( '' !== $v && $v !== $cur ) {
+                        $entry['worth_trying'] = $v;
+                    }
+                }
+                if ( $entry ) {
+                    $clean['findings'][ $fid ] = $entry;
+                }
+            }
+        }
+
+        update_option( self::OPTION_PHRASING, $clean, false );
+        self::$phrasing = null; // drop the per-request cache
     }
 
     /**

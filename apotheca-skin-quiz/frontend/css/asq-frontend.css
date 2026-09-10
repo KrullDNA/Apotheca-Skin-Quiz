@@ -1182,6 +1182,17 @@ i.asq-loading-icon {
     color: var(--asq-text, #333);
     margin: 0 0 14px;
 }
+/* The optional "email me a copy" form sits below the full reading, so give it
+   a little breathing room and a supporting sub-line. */
+.asq-emailcopy {
+    margin-top: 36px;
+}
+.asq-emailcopy-sub {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--asq-text-light, #666);
+    margin: -6px 0 14px;
+}
 .asq-gate-form .asq-email-input {
     width: 100%;
     box-sizing: border-box;
