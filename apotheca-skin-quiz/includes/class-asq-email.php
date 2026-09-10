@@ -278,13 +278,14 @@ class ASQ_Email {
     private function get_email_styles( $finder_id ) {
         $styles = get_post_meta( $finder_id, '_asq_email_styles', true );
         return wp_parse_args( (array) $styles, array(
-            'logo_id'         => 0,
-            'header_image_id' => 0,
-            'accent_color'    => '#000000',
-            'heading'         => '',
-            'sub_heading'     => '',
-            'email_subject'   => '',
-            'footer_text'     => '',
+            'logo_id'           => 0,
+            'header_image_id'   => 0,
+            'accent_color'      => '#000000',
+            'button_text_color' => '#ffffff',
+            'heading'           => '',
+            'sub_heading'       => '',
+            'email_subject'     => '',
+            'footer_text'       => '',
         ) );
     }
 
@@ -331,8 +332,14 @@ class ASQ_Email {
             wp_send_json_error( array( 'message' => __( 'Permission denied.', 'apotheca-skin-quiz' ) ) );
         }
 
+        // Prefer a typed address; fall back to the current user, then the site
+        // admin, so the button always has somewhere to send.
+        $requested = isset( $_POST['email'] ) ? sanitize_email( wp_unslash( $_POST['email'] ) ) : '';
+        if ( $requested && ! is_email( $requested ) ) {
+            wp_send_json_error( array( 'message' => __( 'That does not look like a valid email address.', 'apotheca-skin-quiz' ) ) );
+        }
         $user = wp_get_current_user();
-        $to   = $user && is_email( $user->user_email ) ? $user->user_email : get_option( 'admin_email' );
+        $to   = $requested ?: ( $user && is_email( $user->user_email ) ? $user->user_email : get_option( 'admin_email' ) );
 
         // A representative sample answer set (several findings), run through
         // the real engine so the preview shows the true reading layout.
@@ -384,6 +391,7 @@ class ASQ_Email {
         $consent_text = isset( $args['consent_text'] ) ? $args['consent_text'] : '';
 
         $accent   = ! empty( $email_styles['accent_color'] ) ? $email_styles['accent_color'] : '#000000';
+        $btn_text = ! empty( $email_styles['button_text_color'] ) ? $email_styles['button_text_color'] : '#ffffff';
         $logo_url = ! empty( $email_styles['logo_id'] ) ? wp_get_attachment_image_url( absint( $email_styles['logo_id'] ), 'medium' ) : '';
         $heading     = ! empty( $email_styles['heading'] ) ? $email_styles['heading'] : $finder_title . ', your reading';
         $sub_heading = ! empty( $email_styles['sub_heading'] ) ? $email_styles['sub_heading'] : __( 'Here is your reading, in full.', 'apotheca-skin-quiz' );
@@ -442,7 +450,7 @@ class ASQ_Email {
         // See it online button (the shareable results URL).
         if ( $results_url ) {
             $html .= '<tr><td style="text-align:center;padding:16px 0 8px;">';
-            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:#ffffff;text-decoration:none;padding:14px 36px;font-size:14px;font-weight:300;letter-spacing:0.08em;text-transform:uppercase;">';
+            $html .= '<a href="' . esc_url( $results_url ) . '" style="display:inline-block;background:' . esc_attr( $accent ) . ';color:' . esc_attr( $btn_text ) . ';text-decoration:none;padding:14px 36px;font-size:14px;font-weight:300;letter-spacing:0.08em;text-transform:uppercase;">';
             $html .= esc_html__( 'SEE IT ONLINE', 'apotheca-skin-quiz' );
             $html .= '</a></td></tr>';
         }

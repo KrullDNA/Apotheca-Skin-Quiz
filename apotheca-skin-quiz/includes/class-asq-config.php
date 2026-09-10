@@ -15,6 +15,16 @@ class ASQ_Config {
     /** @var array|null Cached configuration. */
     protected static $data = null;
 
+    /** @var array|null Cached questions with wording overrides applied. */
+    protected static $questions_cache = null;
+
+    /**
+     * The option holding editable question wording. Keyed by question id, then
+     * 'text' / 'instruction' and 'answers' => [ key => [ 'text', 'note' ] ].
+     * Only display text lives here; findings, keys and flags stay in code.
+     */
+    const OPTION_OVERRIDES = 'asq_question_copy';
+
     /**
      * Load (once) and return the whole configuration array.
      */
@@ -26,11 +36,148 @@ class ASQ_Config {
     }
 
     /**
-     * The ordered list of questions.
+     * The ordered list of questions, with any admin wording overrides applied
+     * on top of the code defaults, so edits made in the quiz screen flow to the
+     * front end, the reading and the email alike.
      */
     public static function questions() {
-        $all = self::all();
-        return isset( $all['questions'] ) ? $all['questions'] : array();
+        if ( null === self::$questions_cache ) {
+            $all = self::all();
+            $qs  = isset( $all['questions'] ) ? $all['questions'] : array();
+            self::$questions_cache = self::apply_overrides( $qs );
+        }
+        return self::$questions_cache;
+    }
+
+    /**
+     * The stored wording overrides, or an empty array. Never fatal on a site
+     * where the option was never saved.
+     */
+    public static function overrides() {
+        $saved = get_option( self::OPTION_OVERRIDES, array() );
+        return is_array( $saved ) ? $saved : array();
+    }
+
+    /**
+     * Overlay the saved wording on the code-defined questions. Only text,
+     * instruction and answer text/note are touched; keys, findings, safe/skip
+     * and multiple/optional always come from code, so the engine can never be
+     * broken from the wording screen.
+     */
+    protected static function apply_overrides( $questions ) {
+        $ov = self::overrides();
+        if ( empty( $ov ) ) {
+            return $questions;
+        }
+
+        foreach ( $questions as $i => $q ) {
+            $qid = isset( $q['id'] ) ? $q['id'] : '';
+            if ( '' === $qid || empty( $ov[ $qid ] ) ) {
+                continue;
+            }
+            $o = $ov[ $qid ];
+
+            if ( ! empty( $o['text'] ) ) {
+                $questions[ $i ]['text'] = $o['text'];
+            }
+            if ( isset( $o['instruction'] ) && '' !== $o['instruction'] ) {
+                $questions[ $i ]['instruction'] = $o['instruction'];
+            }
+            if ( ! empty( $o['answers'] ) && is_array( $o['answers'] ) && ! empty( $q['answers'] ) ) {
+                foreach ( $questions[ $i ]['answers'] as $ai => $a ) {
+                    $key = isset( $a['key'] ) ? $a['key'] : '';
+                    if ( '' === $key || empty( $o['answers'][ $key ] ) ) {
+                        continue;
+                    }
+                    if ( ! empty( $o['answers'][ $key ]['text'] ) ) {
+                        $questions[ $i ]['answers'][ $ai ]['text'] = $o['answers'][ $key ]['text'];
+                    }
+                    if ( isset( $o['answers'][ $key ]['note'] ) && '' !== $o['answers'][ $key ]['note'] ) {
+                        $questions[ $i ]['answers'][ $ai ]['note'] = $o['answers'][ $key ]['note'];
+                    }
+                }
+            }
+        }
+        return $questions;
+    }
+
+    /**
+     * Sanitise and store wording overrides from the admin screen. Only non-empty
+     * values that differ from the code default are kept, so clearing a field
+     * reverts it to the default rather than blanking the question.
+     *
+     * @param array $raw The asq_questions POST array (already unslashed).
+     */
+    public static function save_overrides( $raw ) {
+        // Defaults straight from code, to compare against.
+        $all      = self::all();
+        $defaults = isset( $all['questions'] ) ? $all['questions'] : array();
+        $by_id    = array();
+        foreach ( $defaults as $q ) {
+            if ( ! empty( $q['id'] ) ) {
+                $by_id[ $q['id'] ] = $q;
+            }
+        }
+
+        $clean = array();
+        foreach ( (array) $raw as $qid => $fields ) {
+            $qid = sanitize_text_field( $qid );
+            if ( ! isset( $by_id[ $qid ] ) || ! is_array( $fields ) ) {
+                continue;
+            }
+            $def   = $by_id[ $qid ];
+            $entry = array();
+
+            $text = isset( $fields['text'] ) ? sanitize_text_field( $fields['text'] ) : '';
+            if ( '' !== $text && $text !== ( $def['text'] ?? '' ) ) {
+                $entry['text'] = $text;
+            }
+            $instr = isset( $fields['instruction'] ) ? sanitize_text_field( $fields['instruction'] ) : '';
+            if ( '' !== $instr && $instr !== ( $def['instruction'] ?? '' ) ) {
+                $entry['instruction'] = $instr;
+            }
+
+            if ( ! empty( $fields['answers'] ) && is_array( $fields['answers'] ) ) {
+                $def_ans = array();
+                foreach ( ( $def['answers'] ?? array() ) as $a ) {
+                    if ( isset( $a['key'] ) ) {
+                        $def_ans[ $a['key'] ] = $a;
+                    }
+                }
+                $answers = array();
+                foreach ( $fields['answers'] as $key => $af ) {
+                    $key = sanitize_text_field( $key );
+                    if ( ! isset( $def_ans[ $key ] ) || ! is_array( $af ) ) {
+                        continue;
+                    }
+                    $a_entry = array();
+                    $atext   = isset( $af['text'] ) ? sanitize_text_field( $af['text'] ) : '';
+                    if ( '' !== $atext && $atext !== ( $def_ans[ $key ]['text'] ?? '' ) ) {
+                        $a_entry['text'] = $atext;
+                    }
+                    $anote = isset( $af['note'] ) ? sanitize_text_field( $af['note'] ) : '';
+                    if ( '' !== $anote && $anote !== ( $def_ans[ $key ]['note'] ?? '' ) ) {
+                        $a_entry['note'] = $anote;
+                    }
+                    if ( $a_entry ) {
+                        $answers[ $key ] = $a_entry;
+                    }
+                }
+                if ( $answers ) {
+                    $entry['answers'] = $answers;
+                }
+            }
+
+            if ( $entry ) {
+                $clean[ $qid ] = $entry;
+            }
+        }
+
+        update_option( self::OPTION_OVERRIDES, $clean, false );
+
+        // Drop the per-request caches so the new wording is seen immediately.
+        self::$questions_cache = null;
+        self::$index_by_id     = null;
     }
 
     /**
