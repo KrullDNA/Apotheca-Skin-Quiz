@@ -62,7 +62,7 @@ class ASQ_Articles_Admin {
         <div class="wrap">
             <h1><?php esc_html_e( 'Read-next articles', 'apotheca-skin-quiz' ); ?></h1>
             <p class="description" style="max-width:820px;">
-                <?php esc_html_e( 'Add the articles you want shown under each result, as a grid. Fill in a title and a URL for each; the short description and image are optional. Leave a reading empty to let the quiz pull tagged blog posts automatically instead. This is shared across every quiz.', 'apotheca-skin-quiz' ); ?>
+                <?php esc_html_e( 'Add the articles you want shown under each result, as a grid. A URL is all you really need: if it points to a post on this site, the card pulls that post\'s featured image, title and excerpt automatically. Fill in the title, description or image only to override what the post provides, or when the URL is external. Leave a reading empty to let the quiz pull tagged blog posts automatically instead. Shared across every quiz.', 'apotheca-skin-quiz' ); ?>
             </p>
 
             <form method="post">

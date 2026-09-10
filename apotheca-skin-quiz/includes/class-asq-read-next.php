@@ -89,16 +89,46 @@ class ASQ_Read_Next {
         return is_array( $a ) ? $a : array();
     }
 
-    /** Turn a stored row into a read-next card. */
+    /**
+     * Turn a stored row into a read-next card. Anything left blank is filled
+     * from the linked article when the URL points to a post on this site: the
+     * featured image becomes the thumbnail, and the post title and excerpt fill
+     * in too. Values entered by hand always win, and an external URL (not a
+     * local post) simply leaves the blanks empty.
+     */
     protected static function card_from_row( $row ) {
         if ( ! is_array( $row ) ) {
             return array( 'title' => '', 'url' => '', 'excerpt' => '', 'thumb' => '' );
         }
+
+        $title = isset( $row['title'] ) ? $row['title'] : '';
+        $url   = isset( $row['url'] ) ? $row['url'] : '';
+        $desc  = isset( $row['desc'] ) ? $row['desc'] : '';
+        $thumb = isset( $row['image'] ) ? $row['image'] : '';
+
+        if ( '' !== $url && ( '' === $thumb || '' === $title || '' === $desc ) ) {
+            $pid = function_exists( 'url_to_postid' ) ? url_to_postid( $url ) : 0;
+            if ( $pid ) {
+                if ( '' === $thumb ) {
+                    $featured = get_the_post_thumbnail_url( $pid, 'medium' );
+                    if ( $featured ) {
+                        $thumb = $featured;
+                    }
+                }
+                if ( '' === $title ) {
+                    $title = get_the_title( $pid );
+                }
+                if ( '' === $desc ) {
+                    $desc = self::excerpt( $pid );
+                }
+            }
+        }
+
         return array(
-            'title'   => isset( $row['title'] ) ? $row['title'] : '',
-            'url'     => isset( $row['url'] ) ? $row['url'] : '',
-            'excerpt' => isset( $row['desc'] ) ? $row['desc'] : '',
-            'thumb'   => isset( $row['image'] ) ? $row['image'] : '',
+            'title'   => $title,
+            'url'     => $url,
+            'excerpt' => $desc,
+            'thumb'   => $thumb,
         );
     }
 
