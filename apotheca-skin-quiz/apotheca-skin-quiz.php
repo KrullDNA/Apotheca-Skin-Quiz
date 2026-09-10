@@ -3,7 +3,7 @@
  * Plugin Name: Apotheca Skin Quiz
  * Plugin URI: https://github.com/KrullDNA/Apotheca-Skin-Quiz
  * Description: Apotheca Skin Quiz, a multi-step quiz with full Elementor styling controls and a branded, responsive results email. Forked from Product Finder at v1.0.0; runs independently alongside it.
- * Version: 1.1.5
+ * Version: 1.1.6
  * Author: KrullDNA
  * Author URI: https://github.com/KrullDNA
  * License: GPL-2.0+
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'ASQ_VERSION', '1.1.5' );
+define( 'ASQ_VERSION', '1.1.6' );
 define( 'ASQ_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'ASQ_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'ASQ_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -55,6 +55,7 @@ final class Apotheca_Skin_Quiz {
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-leads.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-reports.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-result-wording.php';
+        require_once ASQ_PLUGIN_DIR . 'includes/class-asq-articles-admin.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-privacy.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-connectors.php';
         require_once ASQ_PLUGIN_DIR . 'includes/class-asq-integrations.php';

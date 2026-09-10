@@ -1665,6 +1665,20 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator' => 'before',
         ) );
 
+        // Columns per device for the read-next grid. Defaults keep the current
+        // single-column list; raise it for a 2 or 3 across grid.
+        $this->add_responsive_control( 'rn_columns', array(
+            'label'          => __( 'Columns', 'apotheca-skin-quiz' ),
+            'type'           => Controls_Manager::SLIDER,
+            'range'          => array( 'px' => array( 'min' => 1, 'max' => 4, 'step' => 1 ) ),
+            'default'        => array( 'size' => 1 ),
+            'tablet_default' => array( 'size' => 2 ),
+            'mobile_default' => array( 'size' => 1 ),
+            'selectors'      => array(
+                '{{WRAPPER}} .asq-readnext-cards' => 'grid-template-columns: repeat({{SIZE}}, minmax(0, 1fr));',
+            ),
+        ) );
+
         $this->add_responsive_control( 'rn_cards_gap', array(
             'label'      => __( 'Gap Between Cards', 'apotheca-skin-quiz' ),
             'type'       => Controls_Manager::SLIDER,
