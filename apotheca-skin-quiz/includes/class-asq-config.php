@@ -26,6 +26,35 @@ class ASQ_Config {
     const OPTION_OVERRIDES = 'asq_question_copy';
 
     /**
+     * The small, safe set of inline HTML allowed in question and option wording,
+     * so a phrase can be styled (e.g. <span class="descriptive-text">…</span>)
+     * without opening the door to scripts, styles or event handlers.
+     */
+    public static function allowed_copy_html() {
+        return array(
+            'span'   => array( 'class' => true ),
+            'small'  => array( 'class' => true ),
+            'strong' => array(),
+            'em'     => array(),
+            'b'      => array(),
+            'i'      => array(),
+            'br'     => array(),
+        );
+    }
+
+    /**
+     * Sanitise a piece of question/option wording, keeping only the allowed
+     * inline tags above. Used on save and when rendering server-side previews.
+     */
+    public static function kses_copy( $str ) {
+        if ( ! is_string( $str ) ) {
+            return '';
+        }
+        $str = function_exists( 'wp_kses' ) ? wp_kses( $str, self::allowed_copy_html() ) : strip_tags( $str, '<span><small><strong><em><b><i><br>' );
+        return trim( $str );
+    }
+
+    /**
      * Load (once) and return the whole configuration array.
      */
     public static function all() {
@@ -128,11 +157,11 @@ class ASQ_Config {
             $def   = $by_id[ $qid ];
             $entry = array();
 
-            $text = isset( $fields['text'] ) ? sanitize_text_field( $fields['text'] ) : '';
+            $text = isset( $fields['text'] ) ? self::kses_copy( $fields['text'] ) : '';
             if ( '' !== $text && $text !== ( $def['text'] ?? '' ) ) {
                 $entry['text'] = $text;
             }
-            $instr = isset( $fields['instruction'] ) ? sanitize_text_field( $fields['instruction'] ) : '';
+            $instr = isset( $fields['instruction'] ) ? self::kses_copy( $fields['instruction'] ) : '';
             if ( '' !== $instr && $instr !== ( $def['instruction'] ?? '' ) ) {
                 $entry['instruction'] = $instr;
             }
@@ -151,11 +180,11 @@ class ASQ_Config {
                         continue;
                     }
                     $a_entry = array();
-                    $atext   = isset( $af['text'] ) ? sanitize_text_field( $af['text'] ) : '';
+                    $atext   = isset( $af['text'] ) ? self::kses_copy( $af['text'] ) : '';
                     if ( '' !== $atext && $atext !== ( $def_ans[ $key ]['text'] ?? '' ) ) {
                         $a_entry['text'] = $atext;
                     }
-                    $anote = isset( $af['note'] ) ? sanitize_text_field( $af['note'] ) : '';
+                    $anote = isset( $af['note'] ) ? self::kses_copy( $af['note'] ) : '';
                     if ( '' !== $anote && $anote !== ( $def_ans[ $key ]['note'] ?? '' ) ) {
                         $a_entry['note'] = $anote;
                     }

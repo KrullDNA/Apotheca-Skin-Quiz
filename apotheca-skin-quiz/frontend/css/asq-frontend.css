@@ -220,6 +220,19 @@
     gap: 10px;
 }
 
+/* Optional inline styling hook for question and option wording. Add
+   <span class="descriptive-text">…</span> in the question editor to style part
+   of a line. This is a gentle default; override it in your theme or Elementor
+   custom CSS to taste. */
+.asq-finder .descriptive-text {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.85em;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--asq-text-light, #777);
+}
+
 /* Supporting copy under an option (e.g. Q5 "I'm not sure"). Reads as a quiet
    note, not a button: no card, no border, smaller and muted, nudged in a little
    and sitting tight under its option. */

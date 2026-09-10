@@ -556,8 +556,9 @@ class ASQ_Leads {
         }
         $out = array();
         foreach ( $rows as $row ) {
-            $q = $row['question'] ?? '';
-            $a = implode( ', ', (array) ( $row['answers'] ?? array() ) );
+            // Wording may carry styling HTML; keep the export plain text.
+            $q = wp_strip_all_tags( (string) ( $row['question'] ?? '' ) );
+            $a = wp_strip_all_tags( implode( ', ', (array) ( $row['answers'] ?? array() ) ) );
             $out[] = $q . ': ' . $a;
         }
         return implode( ' | ', $out );
@@ -785,7 +786,7 @@ class ASQ_Leads {
                                             <summary style="cursor:pointer;"><?php printf( esc_html( _n( '%s answer', '%s answers', count( $answers_rows ), 'apotheca-skin-quiz' ) ), esc_html( number_format_i18n( count( $answers_rows ) ) ) ); ?></summary>
                                             <ul style="margin:8px 0 0;">
                                                 <?php foreach ( $answers_rows as $arow ) : ?>
-                                                    <li><strong><?php echo esc_html( $arow['question'] ?? '' ); ?></strong><br><?php echo esc_html( implode( ', ', (array) ( $arow['answers'] ?? array() ) ) ); ?></li>
+                                                    <li><strong><?php echo esc_html( wp_strip_all_tags( (string) ( $arow['question'] ?? '' ) ) ); ?></strong><br><?php echo esc_html( wp_strip_all_tags( implode( ', ', (array) ( $arow['answers'] ?? array() ) ) ) ); ?></li>
                                                 <?php endforeach; ?>
                                             </ul>
                                         </details>
