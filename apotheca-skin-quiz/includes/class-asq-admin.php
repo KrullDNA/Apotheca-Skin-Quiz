@@ -212,7 +212,7 @@ class ASQ_Admin {
         <p>
             <label><strong><?php esc_html_e( 'Submissions per hour, per visitor', 'apotheca-skin-quiz' ); ?></strong></label><br>
             <input type="number" name="asq_options[rate_limit]" value="<?php echo esc_attr( $options['rate_limit'] ); ?>" min="0" step="1" style="width:100px;">
-            <span class="description"><?php esc_html_e( 'How many times one visitor may send their reading in an hour, to stop the form being scripted to spam inboxes. Set to 0 to turn the limit off.', 'apotheca-skin-quiz' ); ?></span>
+            <span class="description"><?php esc_html_e( 'How many times one visitor may send their results in an hour, to stop the form being scripted to spam inboxes. Set to 0 to turn the limit off.', 'apotheca-skin-quiz' ); ?></span>
         </p>
         <p>
             <label><strong><?php esc_html_e( 'Limit-reached message', 'apotheca-skin-quiz' ); ?></strong></label><br>
@@ -349,7 +349,7 @@ class ASQ_Admin {
                     <p>
                         <button type="button" class="button asq-send-test-email" data-finder-id="<?php echo esc_attr( $post->ID ); ?>"><?php esc_html_e( 'Send Test Email', 'apotheca-skin-quiz' ); ?></button>
                         <span class="asq-test-email-result" style="margin-left:8px;"></span><br>
-                        <span class="description"><?php esc_html_e( 'Sends a sample reading to the address above. Uses the last saved settings, so save the quiz first to preview unsaved changes.', 'apotheca-skin-quiz' ); ?></span>
+                        <span class="description"><?php esc_html_e( 'Sends a sample results email to the address above. Uses the last saved settings, so save the quiz first to preview unsaved changes.', 'apotheca-skin-quiz' ); ?></span>
                     </p>
                 </fieldset>
             </div>
