@@ -132,10 +132,12 @@ class ASQ_Ajax {
             ) );
         }
 
-        // Normal reading, with up to three read-next articles, split so the
-        // first section shows and the rest sits behind the email gate.
-        $articles = ASQ_Read_Next::for_findings( $findings, $source_id );
-        $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url );
+        // Normal reading, with up to three read-next articles. Read-next also
+        // draws on findings that were suppressed from the copy but are still
+        // true, so their articles can still appear.
+        $rn_findings = ASQ_Engine::read_next_findings( $findings );
+        $articles    = ASQ_Read_Next::for_findings( $rn_findings, $source_id );
+        $split       = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url );
 
         wp_send_json_success( array(
             'is_gate'           => false,

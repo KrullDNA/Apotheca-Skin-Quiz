@@ -20,6 +20,15 @@ class ASQ_Engine {
     protected static $rules = null;
 
     /**
+     * @var array Findings that fired but were then hidden by suppression, from
+     * the most recent evaluate() call. They contribute no reading copy, but are
+     * still genuinely true, so read-next can use them (e.g. an acid plus two
+     * other actives is over-exfoliation in the copy, yet "too many actives" is
+     * true and its articles should still show).
+     */
+    protected static $suppressed = array();
+
+    /**
      * Load (once) the rules configuration.
      */
     public static function rules() {
@@ -41,6 +50,8 @@ class ASQ_Engine {
         $rules    = self::rules();
         $findings = isset( $rules['findings'] ) ? $rules['findings'] : array();
         $selected = ASQ_Config::selected_keys( (array) $answers );
+
+        self::$suppressed = array(); // reset for this evaluation
 
         // 1. The gate overrides everything and stops evaluation.
         $gate_id = isset( $rules['gate'] ) ? $rules['gate'] : '';
@@ -86,9 +97,15 @@ class ASQ_Engine {
                     if ( ! empty( $when ) && null === self::first_matching_clause( array( $when ), $selected ) ) {
                         continue; // condition not met, so no suppression
                     }
-                    unset( $fired[ $sid ] );
+                    if ( isset( $fired[ $sid ] ) ) {
+                        self::$suppressed[ $sid ] = self::build( $sid, $fired[ $sid ] );
+                        unset( $fired[ $sid ] );
+                    }
                 } else {
-                    unset( $fired[ $entry ] );
+                    if ( isset( $fired[ $entry ] ) ) {
+                        self::$suppressed[ $entry ] = self::build( $entry, $fired[ $entry ] );
+                        unset( $fired[ $entry ] );
+                    }
                 }
             }
         }
@@ -125,6 +142,34 @@ class ASQ_Engine {
             }
         }
 
+        return $out;
+    }
+
+    /**
+     * The findings hidden by suppression in the last evaluate() call. Ordered
+     * as they were suppressed (priority order). Used to widen read-next so a
+     * true-but-suppressed finding still offers its articles.
+     */
+    public static function suppressed_findings() {
+        return array_values( self::$suppressed );
+    }
+
+    /**
+     * The findings that should feed read-next: the shown findings plus any that
+     * were suppressed from the copy but are still true. Deduped by id, in a
+     * sensible order (shown first, then suppressed).
+     */
+    public static function read_next_findings( $shown ) {
+        $seen = array();
+        $out  = array();
+        foreach ( array_merge( (array) $shown, self::suppressed_findings() ) as $f ) {
+            $id = isset( $f['id'] ) ? $f['id'] : '';
+            if ( '' === $id || isset( $seen[ $id ] ) ) {
+                continue;
+            }
+            $seen[ $id ] = true;
+            $out[]       = $f;
+        }
         return $out;
     }
 
