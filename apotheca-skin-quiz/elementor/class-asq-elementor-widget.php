@@ -1797,6 +1797,96 @@ class ASQ_Elementor_Widget extends Widget_Base {
        RENDER
        ═══════════════════════════════════════ */
 
+    /**
+     * A static, styleable preview for the Elementor editor: a sample question
+     * and a short sample reading, in the real markup so the style controls in
+     * every panel apply. Never shown on the front end.
+     */
+    private function render_editor_preview( $finder_id ) {
+        if ( ! class_exists( 'ASQ_Config' ) ) {
+            return '';
+        }
+
+        // Make sure the frontend stylesheet is present in the editor iframe.
+        if ( ! wp_style_is( 'asq-frontend', 'registered' ) ) {
+            wp_register_style( 'asq-frontend', ASQ_PLUGIN_URL . 'frontend/css/asq-frontend.css', array(), ASQ_VERSION );
+        }
+        wp_enqueue_style( 'asq-frontend' );
+
+        $questions = ASQ_Config::questions();
+        $q         = isset( $questions[0] ) ? $questions[0] : array( 'text' => 'Question', 'answers' => array() );
+        $multiple  = ! empty( $q['multiple'] );
+        $instr     = ! empty( $q['instruction'] ) ? $q['instruction'] : ( $multiple ? __( 'Select all that apply', 'apotheca-skin-quiz' ) : __( 'Select one option', 'apotheca-skin-quiz' ) );
+        $answers   = array_slice( isset( $q['answers'] ) ? $q['answers'] : array(), 0, 4 );
+
+        $cap = 'style="display:block;margin:22px 0 6px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#b9b9c0;"';
+
+        ob_start();
+        ?>
+        <div class="asq-finder" id="asq-finder-<?php echo esc_attr( $finder_id ); ?>">
+            <div style="margin:0 0 14px;padding:8px 12px;background:#f6f4fb;border:1px dashed #cdb9f0;border-radius:6px;font-size:12px;color:#6b5aa0;">
+                <?php esc_html_e( 'Editor preview, for styling only. The live quiz is interactive on the published page.', 'apotheca-skin-quiz' ); ?>
+            </div>
+
+            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Question', 'apotheca-skin-quiz' ); ?></span>
+
+            <div class="asq-progress-bar-wrap">
+                <div class="asq-progress-bar"><div class="asq-progress-fill" style="width:20%;"></div></div>
+                <span class="asq-progress-text">20%</span>
+            </div>
+
+            <div class="asq-questions-container">
+                <div class="asq-question-slide asq-slide-in">
+                    <div class="asq-text-layout">
+                        <div class="asq-text-left">
+                            <h2 class="asq-question-text"><?php echo esc_html( $q['text'] ); ?></h2>
+                            <p class="asq-question-instruction"><?php echo esc_html( $instr ); ?></p>
+                        </div>
+                        <div class="asq-text-right">
+                            <div class="asq-answers-grid asq-answers-grid--text">
+                                <?php foreach ( $answers as $idx => $a ) : ?>
+                                    <div class="asq-answer-option asq-answer-option--text<?php echo 0 === $idx ? ' asq-selected' : ''; ?>">
+                                        <span class="asq-answer-text"><?php echo esc_html( $a['text'] ?? '' ); ?></span>
+                                        <?php if ( $multiple ) : ?>
+                                            <span class="asq-checkbox"><span class="asq-check-icon"></span></span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="asq-nav-buttons">
+                        <span></span>
+                        <button type="button" class="asq-btn asq-btn-primary asq-btn-continue"><?php esc_html_e( 'Continue', 'apotheca-skin-quiz' ); ?></button>
+                    </div>
+                </div>
+            </div>
+
+            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Result', 'apotheca-skin-quiz' ); ?></span>
+
+            <div class="asq-results-screen" style="display:block;">
+                <h3 class="asq-results-title"><?php esc_html_e( 'Your reading', 'apotheca-skin-quiz' ); ?></h3>
+                <div class="asq-results-container">
+                    <div class="asq-reading">
+                        <section class="asq-reading-section asq-reading-section--describing">
+                            <h3 class="asq-reading-heading"><?php esc_html_e( "What you're describing", 'apotheca-skin-quiz' ); ?></h3>
+                            <p class="asq-reading-p"><?php echo esc_html__( 'A sample paragraph so you can style the reading, with an ', 'apotheca-skin-quiz' ); ?><span class="asq-reading-em"><?php esc_html_e( 'emphasised phrase', 'apotheca-skin-quiz' ); ?></span><?php esc_html_e( ' shown in your accent colour.', 'apotheca-skin-quiz' ); ?></p>
+                        </section>
+                        <section class="asq-reading-section asq-reading-section--worth_trying">
+                            <h3 class="asq-reading-heading"><?php esc_html_e( 'One or two things worth trying', 'apotheca-skin-quiz' ); ?></h3>
+                            <p class="asq-reading-p"><?php esc_html_e( 'A second sample paragraph, so spacing between sections is visible.', 'apotheca-skin-quiz' ); ?></p>
+                        </section>
+                    </div>
+                </div>
+                <div class="asq-results-actions">
+                    <button type="button" class="asq-btn asq-btn-secondary asq-start-over"><?php esc_html_e( 'Start over', 'apotheca-skin-quiz' ); ?></button>
+                </div>
+            </div>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
     protected function render() {
         $settings  = $this->get_settings_for_display();
         $finder_id = absint( $settings['finder_id'] ?? 0 );
@@ -1808,6 +1898,16 @@ class ASQ_Elementor_Widget extends Widget_Base {
                 echo '<p style="color:#999;">Please select a Apotheca Skin Quiz from the content settings.</p>';
                 echo '</div>';
             }
+            return;
+        }
+
+        // In the Elementor editor the live quiz is JS-driven and does not run
+        // inside the editor iframe, so it shows as blank and can't be styled.
+        // Render a static, styleable preview of the question and the reading
+        // instead, using the real classes so every style control applies. On
+        // the front end this branch is skipped and the live quiz renders.
+        if ( \Elementor\Plugin::$instance->editor->is_edit_mode() ) {
+            echo $this->render_editor_preview( $finder_id ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Built from esc_* below.
             return;
         }
 

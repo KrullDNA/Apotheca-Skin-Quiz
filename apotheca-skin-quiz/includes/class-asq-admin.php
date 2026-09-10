@@ -227,13 +227,14 @@ class ASQ_Admin {
     public function render_email_styles_box( $post ) {
         $es = get_post_meta( $post->ID, '_asq_email_styles', true );
         $es = wp_parse_args( (array) $es, array(
-            'logo_id'          => 0,
-            'header_image_id'  => 0,
-            'accent_color'     => '#000000',
-            'heading'          => '',
-            'sub_heading'      => '',
-            'email_subject'    => '',
-            'footer_text'      => '',
+            'logo_id'           => 0,
+            'header_image_id'   => 0,
+            'accent_color'      => '#000000',
+            'button_text_color' => '#ffffff',
+            'heading'           => '',
+            'sub_heading'       => '',
+            'email_subject'     => '',
+            'footer_text'       => '',
         ) );
         $logo_url = $es['logo_id'] ? wp_get_attachment_image_url( $es['logo_id'], 'medium' ) : '';
         $header_image_url = $es['header_image_id'] ? wp_get_attachment_image_url( $es['header_image_id'], 'medium' ) : '';
@@ -276,7 +277,17 @@ class ASQ_Admin {
                     <p>
                         <label><?php esc_html_e( 'Top Strip & Button Background', 'apotheca-skin-quiz' ); ?></label><br>
                         <input type="text" name="asq_email[accent_color]" value="<?php echo esc_attr( $es['accent_color'] ); ?>" class="asq-color-field" data-default-color="#000000">
-                        <span class="description"><?php esc_html_e( 'Used for the top colour strip and "Shop the Look" button.', 'apotheca-skin-quiz' ); ?></span>
+                        <span class="description"><?php esc_html_e( 'Used for the top colour strip and the "See it online" button background.', 'apotheca-skin-quiz' ); ?></span>
+                    </p>
+                </fieldset>
+
+                <!-- Button Text Colour -->
+                <fieldset class="asq-dn-fieldset">
+                    <legend><?php esc_html_e( 'Button Text Colour', 'apotheca-skin-quiz' ); ?></legend>
+                    <p>
+                        <label><?php esc_html_e( '"See it online" Button Text', 'apotheca-skin-quiz' ); ?></label><br>
+                        <input type="text" name="asq_email[button_text_color]" value="<?php echo esc_attr( $es['button_text_color'] ); ?>" class="asq-color-field" data-default-color="#ffffff">
+                        <span class="description"><?php esc_html_e( 'The text colour on the button, over the accent background. Defaults to white.', 'apotheca-skin-quiz' ); ?></span>
                     </p>
                 </fieldset>
 
@@ -332,9 +343,13 @@ class ASQ_Admin {
                 <fieldset class="asq-dn-fieldset">
                     <legend><?php esc_html_e( 'Test Email', 'apotheca-skin-quiz' ); ?></legend>
                     <p>
+                        <label for="asq-test-email-address"><?php esc_html_e( 'Send test to', 'apotheca-skin-quiz' ); ?></label><br>
+                        <input type="email" id="asq-test-email-address" class="asq-test-email-address regular-text" value="<?php echo esc_attr( wp_get_current_user()->user_email ); ?>" placeholder="<?php esc_attr_e( 'name@example.com', 'apotheca-skin-quiz' ); ?>">
+                    </p>
+                    <p>
                         <button type="button" class="button asq-send-test-email" data-finder-id="<?php echo esc_attr( $post->ID ); ?>"><?php esc_html_e( 'Send Test Email', 'apotheca-skin-quiz' ); ?></button>
                         <span class="asq-test-email-result" style="margin-left:8px;"></span><br>
-                        <span class="description"><?php esc_html_e( 'Sends a sample results email (using a few placeholder products) to your account email address. Uses the last saved settings – save the finder first to preview unsaved changes.', 'apotheca-skin-quiz' ); ?></span>
+                        <span class="description"><?php esc_html_e( 'Sends a sample reading to the address above. Uses the last saved settings, so save the quiz first to preview unsaved changes.', 'apotheca-skin-quiz' ); ?></span>
                     </p>
                 </fieldset>
             </div>
@@ -391,7 +406,8 @@ class ASQ_Admin {
                 $.post(asqAdmin.ajax_url, {
                     action: 'asq_send_test_email',
                     nonce: asqAdmin.nonce,
-                    finder_id: $btn.data('finder-id')
+                    finder_id: $btn.data('finder-id'),
+                    email: $('.asq-test-email-address').val()
                 }, function(res){
                     $btn.prop('disabled', false);
                     if (res && res.success) {
@@ -412,50 +428,77 @@ class ASQ_Admin {
     /* ─── Questions box ─── */
 
     /**
-     * The ten questions are defined in code (includes/asq-quiz-config.php) and
-     * shared across every quiz, so this box is a read-only reference showing
-     * the questions, their options and the findings each option feeds.
+     * The wording of the ten questions is editable here so the copy can be
+     * softened if it reads too clinical. Only the wording changes: the options'
+     * order, the findings each feeds, and the quiz logic all stay in code, so
+     * nothing here can break how the quiz scores. The wording is shared across
+     * every quiz (there is one question set), and blanking a field restores its
+     * default.
      */
     public function render_questions_box( $post ) {
-        $questions = ASQ_Config::questions();
-        $findings  = ASQ_Config::findings();
+        $all       = ASQ_Config::all();
+        $defaults  = isset( $all['questions'] ) ? $all['questions'] : array();
+        $effective = ASQ_Config::questions(); // defaults with any saved overrides applied
         ?>
-        <p class="description">
-            <?php esc_html_e( 'These ten questions are defined in code and shared across every quiz. To change the wording, the options or the finding mappings, edit includes/asq-quiz-config.php.', 'apotheca-skin-quiz' ); ?>
+        <p class="description" style="margin-bottom:14px;">
+            <?php esc_html_e( 'Edit how each question and option reads. This is shared across every quiz. Leave a field blank to use the built-in wording shown as its placeholder. Which findings each option feeds, and the quiz logic, are set in code and are not affected by anything here.', 'apotheca-skin-quiz' ); ?>
         </p>
-        <ol class="asq-config-questions" style="margin-left:18px;">
-            <?php foreach ( $questions as $q ) : ?>
-                <li style="margin:0 0 14px;">
-                    <strong><?php echo esc_html( $q['text'] ); ?></strong>
-                    <?php if ( ! empty( $q['multiple'] ) ) : ?>
-                        <em>(<?php esc_html_e( 'select all that apply', 'apotheca-skin-quiz' ); ?>)</em>
-                    <?php endif; ?>
-                    <?php if ( ! empty( $q['optional'] ) ) : ?>
-                        <em>(<?php esc_html_e( 'skippable', 'apotheca-skin-quiz' ); ?>)</em>
-                    <?php endif; ?>
-                    <ul style="margin:6px 0 0 18px;list-style:disc;">
-                        <?php foreach ( $q['answers'] as $a ) : ?>
-                            <li>
-                                <?php echo esc_html( $a['text'] ); ?>
-                                <?php if ( ! empty( $a['findings'] ) ) : ?>
-                                    <span style="color:#646970;">&rarr; <?php echo esc_html( implode( ', ', $a['findings'] ) ); ?></span>
-                                <?php endif; ?>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </li>
-            <?php endforeach; ?>
-        </ol>
-        <p class="description">
-            <strong><?php esc_html_e( 'Findings', 'apotheca-skin-quiz' ); ?>:</strong>
-            <?php
-            $bits = array();
-            foreach ( $findings as $id => $label ) {
-                $bits[] = $id . ' ' . $label;
-            }
-            echo esc_html( implode( '  ·  ', $bits ) );
+
+        <?php foreach ( $effective as $i => $q ) :
+            $qid  = isset( $q['id'] ) ? $q['id'] : ( 'Q' . ( $i + 1 ) );
+            $def  = isset( $defaults[ $i ] ) ? $defaults[ $i ] : $q;
+            $flags = array();
+            if ( ! empty( $q['multiple'] ) ) { $flags[] = __( 'select all that apply', 'apotheca-skin-quiz' ); }
+            if ( ! empty( $q['optional'] ) ) { $flags[] = __( 'skippable', 'apotheca-skin-quiz' ); }
             ?>
-        </p>
+            <fieldset class="asq-dn-fieldset" style="margin-bottom:16px;">
+                <legend>
+                    <?php echo esc_html( $qid ); ?>
+                    <?php if ( $flags ) : ?><span style="font-weight:400;color:#646970;">(<?php echo esc_html( implode( ', ', $flags ) ); ?>)</span><?php endif; ?>
+                </legend>
+
+                <p style="margin:0 0 6px;">
+                    <label style="display:block;font-weight:600;"><?php esc_html_e( 'Question', 'apotheca-skin-quiz' ); ?></label>
+                    <input type="text" class="large-text" name="asq_questions[<?php echo esc_attr( $qid ); ?>][text]"
+                        value="<?php echo esc_attr( $q['text'] ?? '' ); ?>"
+                        placeholder="<?php echo esc_attr( $def['text'] ?? '' ); ?>">
+                </p>
+
+                <?php if ( isset( $def['instruction'] ) ) : ?>
+                    <p style="margin:0 0 6px;">
+                        <label style="display:block;font-weight:600;"><?php esc_html_e( 'Instruction line', 'apotheca-skin-quiz' ); ?></label>
+                        <input type="text" class="large-text" name="asq_questions[<?php echo esc_attr( $qid ); ?>][instruction]"
+                            value="<?php echo esc_attr( $q['instruction'] ?? '' ); ?>"
+                            placeholder="<?php echo esc_attr( $def['instruction'] ?? '' ); ?>">
+                    </p>
+                <?php endif; ?>
+
+                <label style="display:block;font-weight:600;margin-top:6px;"><?php esc_html_e( 'Options', 'apotheca-skin-quiz' ); ?></label>
+                <?php foreach ( $q['answers'] as $ai => $a ) :
+                    $key  = isset( $a['key'] ) ? $a['key'] : '';
+                    $adef = isset( $def['answers'][ $ai ] ) ? $def['answers'][ $ai ] : $a;
+                    if ( '' === $key ) { continue; }
+                    ?>
+                    <p style="margin:0 0 4px;display:flex;gap:8px;align-items:baseline;">
+                        <span style="width:18px;color:#646970;"><?php echo esc_html( $key ); ?></span>
+                        <input type="text" class="large-text" style="flex:1;" name="asq_questions[<?php echo esc_attr( $qid ); ?>][answers][<?php echo esc_attr( $key ); ?>][text]"
+                            value="<?php echo esc_attr( $a['text'] ?? '' ); ?>"
+                            placeholder="<?php echo esc_attr( $adef['text'] ?? '' ); ?>">
+                        <?php if ( ! empty( $a['findings'] ) ) : ?>
+                            <span style="color:#b9b9c0;white-space:nowrap;" title="<?php esc_attr_e( 'Findings this option feeds (set in code)', 'apotheca-skin-quiz' ); ?>">&rarr; <?php echo esc_html( implode( ', ', $a['findings'] ) ); ?></span>
+                        <?php endif; ?>
+                    </p>
+                    <?php if ( isset( $adef['note'] ) ) : ?>
+                        <p style="margin:0 0 8px 26px;">
+                            <input type="text" class="large-text" name="asq_questions[<?php echo esc_attr( $qid ); ?>][answers][<?php echo esc_attr( $key ); ?>][note]"
+                                value="<?php echo esc_attr( $a['note'] ?? '' ); ?>"
+                                placeholder="<?php echo esc_attr( $adef['note'] ?? '' ); ?>">
+                            <span class="description"><?php esc_html_e( 'Supporting note shown under this option.', 'apotheca-skin-quiz' ); ?></span>
+                        </p>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </fieldset>
+        <?php endforeach; ?>
         <?php
     }
 
@@ -487,15 +530,21 @@ class ASQ_Admin {
         // Save Email styles
         $raw_email    = $_POST['asq_email'] ?? array();
         $email_styles = array(
-            'logo_id'          => absint( $raw_email['logo_id'] ?? 0 ),
-            'header_image_id'  => absint( $raw_email['header_image_id'] ?? 0 ),
-            'accent_color'     => sanitize_hex_color( $raw_email['accent_color'] ?? '#000000' ) ?: '#000000',
-            'heading'          => sanitize_text_field( $raw_email['heading'] ?? '' ),
-            'sub_heading'      => wp_kses_post( $raw_email['sub_heading'] ?? '' ),
-            'email_subject'    => sanitize_text_field( $raw_email['email_subject'] ?? '' ),
-            'footer_text'      => sanitize_text_field( $raw_email['footer_text'] ?? '' ),
+            'logo_id'           => absint( $raw_email['logo_id'] ?? 0 ),
+            'header_image_id'   => absint( $raw_email['header_image_id'] ?? 0 ),
+            'accent_color'      => sanitize_hex_color( $raw_email['accent_color'] ?? '#000000' ) ?: '#000000',
+            'button_text_color' => sanitize_hex_color( $raw_email['button_text_color'] ?? '#ffffff' ) ?: '#ffffff',
+            'heading'           => sanitize_text_field( $raw_email['heading'] ?? '' ),
+            'sub_heading'       => wp_kses_post( $raw_email['sub_heading'] ?? '' ),
+            'email_subject'     => sanitize_text_field( $raw_email['email_subject'] ?? '' ),
+            'footer_text'       => sanitize_text_field( $raw_email['footer_text'] ?? '' ),
         );
         update_post_meta( $post_id, '_asq_email_styles', $email_styles );
+
+        // Save shared question wording overrides (see ASQ_Config::overrides()).
+        if ( isset( $_POST['asq_questions'] ) && is_array( $_POST['asq_questions'] ) ) {
+            ASQ_Config::save_overrides( wp_unslash( $_POST['asq_questions'] ) );
+        }
     }
 
 }
