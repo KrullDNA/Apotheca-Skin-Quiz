@@ -68,7 +68,7 @@ class ASQ_Frontend {
         // The exchange, stated up front near the first question.
         $exchange_text = ! empty( $options['exchange_text'] )
             ? $options['exchange_text']
-            : __( "At the end you'll get your full reading to read right here. If you'd like a copy by email, you can add your address then. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' );
+            : __( "At the end you'll get your full results here. If you'd like a copy by email, you can add your address then. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' );
 
         wp_enqueue_style( 'asq-frontend' );
         wp_enqueue_script( 'asq-frontend' );
@@ -98,15 +98,15 @@ class ASQ_Frontend {
             'i18n'          => array(
                 'next'              => __( 'Continue', 'apotheca-skin-quiz' ),
                 'back'              => __( 'Back', 'apotheca-skin-quiz' ),
-                'loading'           => __( 'Reading your answers…', 'apotheca-skin-quiz' ),
+                'loading'           => __( 'Working out your results…', 'apotheca-skin-quiz' ),
                 'email_placeholder' => __( 'Enter your email address', 'apotheca-skin-quiz' ),
                 'email_fail'        => __( 'Failed to send. Please try again.', 'apotheca-skin-quiz' ),
-                'email_gate_lead'   => __( 'Want your reading by email?', 'apotheca-skin-quiz' ),
+                'email_gate_lead'   => __( 'Want your results by email?', 'apotheca-skin-quiz' ),
                 'email_copy_sub'    => __( "We'll send you a copy to keep, plus the odd note worth reading. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' ),
                 'send_reading'      => __( 'Email me a copy', 'apotheca-skin-quiz' ),
                 'consent_hint'      => __( 'Tick the box so we can send it.', 'apotheca-skin-quiz' ),
                 'sent_confirm'      => __( 'Sent. Check your inbox for your copy.', 'apotheca-skin-quiz' ),
-                'your_results'      => __( 'Your reading', 'apotheca-skin-quiz' ),
+                'your_results'      => __( 'Your results', 'apotheca-skin-quiz' ),
                 'start_over'        => __( 'Start over', 'apotheca-skin-quiz' ),
                 'complete'          => __( 'Complete', 'apotheca-skin-quiz' ),
             ),
@@ -167,7 +167,7 @@ class ASQ_Frontend {
             <!-- Results screen -->
             <div class="asq-results-screen" style="display:none;">
                 <h3 class="asq-results-title" tabindex="-1"></h3>
-                <div class="asq-results-container" role="region" aria-live="polite" aria-atomic="false" aria-label="<?php esc_attr_e( 'Your reading', 'apotheca-skin-quiz' ); ?>"></div>
+                <div class="asq-results-container" role="region" aria-live="polite" aria-atomic="false" aria-label="<?php esc_attr_e( 'Your results', 'apotheca-skin-quiz' ); ?>"></div>
                 <div class="asq-results-actions">
                     <button type="button" class="asq-btn asq-btn-secondary asq-start-over"></button>
                 </div>

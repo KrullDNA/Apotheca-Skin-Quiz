@@ -61,7 +61,7 @@ class ASQ_Result_Wording {
         <div class="wrap">
             <h1><?php esc_html_e( 'Result wording', 'apotheca-skin-quiz' ); ?></h1>
             <p class="description" style="max-width:820px;">
-                <?php esc_html_e( 'Edit any part of the reading. This is shared across every quiz. Leave a field blank to use the built-in wording shown as its placeholder.', 'apotheca-skin-quiz' ); ?>
+                <?php esc_html_e( 'Edit any part of the results. This is shared across every quiz. Leave a field blank to use the built-in wording shown as its placeholder.', 'apotheca-skin-quiz' ); ?>
             </p>
             <p class="description" style="max-width:820px;margin-bottom:16px;">
                 <strong><?php esc_html_e( 'Keep the tokens.', 'apotheca-skin-quiz' ); ?></strong>
@@ -102,7 +102,7 @@ class ASQ_Result_Wording {
                     </tr>
                 </tbody></table>
 
-                <h2><?php esc_html_e( 'The readings', 'apotheca-skin-quiz' ); ?></h2>
+                <h2><?php esc_html_e( 'The results copy', 'apotheca-skin-quiz' ); ?></h2>
                 <p class="description"><?php echo esc_html( $token_hint ); ?></p>
 
                 <?php
@@ -122,7 +122,7 @@ class ASQ_Result_Wording {
                         <p style="margin:6px 0 2px;font-weight:600;"><?php esc_html_e( 'What you\'re describing', 'apotheca-skin-quiz' ); ?></p>
                         <textarea class="large-text" rows="3" name="asq_result[findings][<?php echo esc_attr( $fid ); ?>][describing]" placeholder="<?php echo esc_attr( $fd['describing'] ?? '' ); ?>"><?php echo esc_textarea( $fe['describing'] ?? '' ); ?></textarea>
 
-                        <p style="margin:10px 0 2px;font-weight:600;"><?php esc_html_e( 'What it probably isn\'t', 'apotheca-skin-quiz' ); ?> <span class="description" style="font-weight:400;">(<?php esc_html_e( 'optional; leave blank to omit this line for this reading', 'apotheca-skin-quiz' ); ?>)</span></p>
+                        <p style="margin:10px 0 2px;font-weight:600;"><?php esc_html_e( 'What it probably isn\'t', 'apotheca-skin-quiz' ); ?> <span class="description" style="font-weight:400;">(<?php esc_html_e( 'optional; leave blank to omit this line for this result', 'apotheca-skin-quiz' ); ?>)</span></p>
                         <textarea class="large-text" rows="3" name="asq_result[findings][<?php echo esc_attr( $fid ); ?>][probably_not]" placeholder="<?php echo esc_attr( $fd['probably_not'] ?? '' ); ?>"><?php echo esc_textarea( $fe['probably_not'] ?? '' ); ?></textarea>
 
                         <p style="margin:10px 0 2px;font-weight:600;"><?php esc_html_e( 'One or two things worth trying', 'apotheca-skin-quiz' ); ?><?php if ( 'F12' === $fid ) : ?> <span class="description" style="font-weight:400;">(<?php esc_html_e( 'keep {decoder}…{/decoder} for the Decoder link', 'apotheca-skin-quiz' ); ?>)</span><?php endif; ?></p>
@@ -131,7 +131,7 @@ class ASQ_Result_Wording {
                 <?php endforeach; ?>
 
                 <h2><?php esc_html_e( 'Medical gate response', 'apotheca-skin-quiz' ); ?></h2>
-                <p class="description"><?php esc_html_e( 'Shown instead of a reading when an answer trips the safety gate. In the on-page body you can use {ticked}, which becomes exactly what she flagged, e.g. "a mole or mark that has changed".', 'apotheca-skin-quiz' ); ?></p>
+                <p class="description"><?php esc_html_e( 'Shown instead of the results when an answer trips the safety gate. In the on-page body you can use {ticked}, which becomes exactly what she flagged, e.g. "a mole or mark that has changed".', 'apotheca-skin-quiz' ); ?></p>
                 <table class="form-table" role="presentation"><tbody>
                     <tr>
                         <th scope="row"><?php esc_html_e( 'Heading', 'apotheca-skin-quiz' ); ?></th>
