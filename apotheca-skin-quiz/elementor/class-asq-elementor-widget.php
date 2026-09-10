@@ -1689,6 +1689,41 @@ class ASQ_Elementor_Widget extends Widget_Base {
             ),
         ) );
 
+        // Card layout: the default row (image beside the text) or stacked
+        // (image on top), which suits a 2 or 3 column grid.
+        $this->add_control( 'rn_card_layout', array(
+            'label'        => __( 'Card Layout', 'apotheca-skin-quiz' ),
+            'type'         => Controls_Manager::SELECT,
+            'default'      => 'row',
+            'options'      => array(
+                'row'     => __( 'Row (image left)', 'apotheca-skin-quiz' ),
+                'stacked' => __( 'Stacked (image on top)', 'apotheca-skin-quiz' ),
+            ),
+            'prefix_class' => 'asq-rn-layout-',
+        ) );
+
+        $this->add_responsive_control( 'rn_card_padding', array(
+            'label'      => __( 'Card Padding', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-body' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'rn_content_align', array(
+            'label'     => __( 'Content Alignment', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::CHOOSE,
+            'options'   => array(
+                'left'   => array( 'title' => __( 'Left', 'apotheca-skin-quiz' ), 'icon' => 'eicon-text-align-left' ),
+                'center' => array( 'title' => __( 'Center', 'apotheca-skin-quiz' ), 'icon' => 'eicon-text-align-center' ),
+                'right'  => array( 'title' => __( 'Right', 'apotheca-skin-quiz' ), 'icon' => 'eicon-text-align-right' ),
+            ),
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-body' => 'text-align: {{VALUE}};',
+            ),
+        ) );
+
         $this->add_control( 'rn_card_bg', array(
             'label'     => __( 'Card Background', 'apotheca-skin-quiz' ),
             'type'      => Controls_Manager::COLOR,
@@ -1733,13 +1768,23 @@ class ASQ_Elementor_Widget extends Widget_Base {
         ) );
 
         $this->add_responsive_control( 'rn_thumb_width', array(
-            'label'      => __( 'Thumbnail Width', 'apotheca-skin-quiz' ),
-            'type'       => Controls_Manager::SLIDER,
-            'size_units' => array( 'px' ),
-            'range'      => array( 'px' => array( 'min' => 48, 'max' => 200 ) ),
-            'selectors'  => array(
-                '{{WRAPPER}} .asq-readnext-thumb' => 'flex: 0 0 {{SIZE}}{{UNIT}};',
-                '{{WRAPPER}} .asq-readnext-thumb img' => 'width: {{SIZE}}{{UNIT}};',
+            'label'       => __( 'Thumbnail Width (row layout)', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::SLIDER,
+            'size_units'  => array( 'px' ),
+            'range'       => array( 'px' => array( 'min' => 48, 'max' => 200 ) ),
+            'selectors'   => array(
+                '{{WRAPPER}}:not(.asq-rn-layout-stacked) .asq-readnext-thumb' => 'flex: 0 0 {{SIZE}}{{UNIT}};',
+                '{{WRAPPER}}:not(.asq-rn-layout-stacked) .asq-readnext-thumb img' => 'width: {{SIZE}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'rn_thumb_height', array(
+            'label'       => __( 'Thumbnail Height (stacked layout)', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::SLIDER,
+            'size_units'  => array( 'px' ),
+            'range'       => array( 'px' => array( 'min' => 80, 'max' => 360 ) ),
+            'selectors'   => array(
+                '{{WRAPPER}}.asq-rn-layout-stacked .asq-readnext-thumb img' => 'height: {{SIZE}}{{UNIT}}; object-fit: cover;',
             ),
         ) );
 
