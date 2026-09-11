@@ -103,12 +103,12 @@ return array(
         // Q1 ── The framing question.
         array(
             'id'       => 'Q1',
-            'text'     => __( 'What brought you here today?', 'apotheca-skin-quiz' ),
+            'text'     => __( 'Why are you taking the quiz today?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'answers'  => array(
                 array( 'key' => 'A', 'text' => __( "Something's changed and I'm not sure why", 'apotheca-skin-quiz' ), 'findings' => array( 'F6', 'F9' ) ),
                 array( 'key' => 'B', 'text' => __( "My skin's never really had a calm baseline", 'apotheca-skin-quiz' ), 'findings' => array() ),
-                array( 'key' => 'C', 'text' => __( "I'm using a lot of things and I'm not seeing much for it", 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
+                array( 'key' => 'C', 'text' => __( "I'm using a lot of things and I'm not seeing many results", 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
                 array( 'key' => 'D', 'text' => __( 'Everything stings lately', 'apotheca-skin-quiz' ), 'findings' => array( 'F5' ) ),
             ),
         ),
