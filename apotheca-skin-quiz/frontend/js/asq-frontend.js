@@ -241,7 +241,13 @@
                 html += '<button type="button" class="asq-btn asq-btn-secondary asq-btn-back">' + asqFrontend.i18n.back + '</button>';
             }
             html += '</div>';
-            html += '<div class="asq-nav-center"><button type="button" class="asq-btn asq-btn-secondary asq-restart">' + this.escHtml(asqFrontend.i18n.start_again) + '</button></div>';
+            html += '<div class="asq-nav-center">';
+            // Start again appears only from the second question on, matching Back.
+            // There is nothing to restart from on the first question.
+            if (idx > 0) {
+                html += '<button type="button" class="asq-btn asq-btn-secondary asq-restart">' + this.escHtml(asqFrontend.i18n.start_again) + '</button>';
+            }
+            html += '</div>';
             html += '<div class="asq-nav-right">';
             if (q.multiple) {
                 var hasSelection = this.answers[idx] && this.answers[idx].length > 0;
