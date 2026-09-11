@@ -227,7 +227,7 @@ class ASQ_Email {
 
         // Build the reading and email it: the four sections flat, read-next
         // with thumbnails, a working unsubscribe, and the consent wording.
-        $articles = ASQ_Read_Next::for_findings( $findings, 0 );
+        $articles = ASQ_Read_Next::for_findings( ASQ_Engine::read_next_findings( $findings ), 0 );
         $reading  = ASQ_Presenter::build_reading( $findings, $answers, $articles, $decoder_url );
         $body     = $this->build_email_body( $finder_title, $reading, array(
             'results_url'     => $results_url,
@@ -345,7 +345,7 @@ class ASQ_Email {
         // the real engine so the preview shows the true reading layout.
         $sample_answers = array( 0 => array( 3 ), 1 => array( 0 ), 2 => array( 0 ), 3 => array( 3 ), 4 => array( 3 ), 5 => array( 0 ), 6 => array( 1 ), 7 => array( 0 ), 8 => array( 1 ), 9 => array( 4 ) );
         $findings = ASQ_Engine::evaluate( $sample_answers );
-        $articles = ASQ_Read_Next::for_findings( $findings, 0 );
+        $articles = ASQ_Read_Next::for_findings( ASQ_Engine::read_next_findings( $findings ), 0 );
         $reading  = ASQ_Presenter::build_reading( $findings, $sample_answers, $articles );
 
         $email_styles = $this->get_email_styles( $finder_id );
