@@ -178,14 +178,18 @@
                 html += '<p class="asq-exchange-note">' + this.escHtml(asqFrontend.exchange_text) + '</p>';
             }
 
-            var instructionText = q.instruction || (q.multiple ? 'Select all that apply' : 'Select one option');
+            // Single-select taps advance on their own, so no instruction line is
+            // shown for them unless the question sets its own.
+            var instructionText = q.instruction || (q.multiple ? 'Select all that apply' : '');
 
             if (hasImages) {
                 // Image grid layout. Question, instruction and option text may
                 // carry a little safe inline HTML (e.g. a styling span); it is
                 // admin-authored and server-sanitised, so it renders as HTML.
                 html += '<h2 class="asq-question-text asq-question-text--center">' + q.text + '</h2>';
-                html += '<p class="asq-question-instruction asq-question-instruction--center">' + instructionText + '</p>';
+                if (instructionText) {
+                    html += '<p class="asq-question-instruction asq-question-instruction--center">' + instructionText + '</p>';
+                }
                 html += '<div class="asq-answers-grid asq-answers-grid--images">';
                 for (var i = 0; i < q.answers.length; i++) {
                     var a = q.answers[i];
@@ -209,7 +213,9 @@
                 html += '<div class="asq-text-layout">';
                 html += '<div class="asq-text-left">';
                 html += '<h2 class="asq-question-text">' + q.text + '</h2>';
-                html += '<p class="asq-question-instruction">' + instructionText + '</p>';
+                if (instructionText) {
+                    html += '<p class="asq-question-instruction">' + instructionText + '</p>';
+                }
                 html += '</div>';
                 html += '<div class="asq-text-right">';
                 html += '<div class="asq-answers-grid asq-answers-grid--text">';
@@ -284,11 +290,13 @@
             var hasImages = fu.answers.some(function (a) { return !!a.image; });
             var html = '<div class="asq-question-slide asq-followup-slide" data-qi="' + qi + '" data-ai="' + ai + '">';
 
-            var instructionText = fu.instruction || (fu.multiple ? 'Select all that apply' : 'Select one option');
+            var instructionText = fu.instruction || (fu.multiple ? 'Select all that apply' : '');
 
             if (hasImages) {
                 html += '<h2 class="asq-question-text asq-question-text--center">' + this.escHtml(fu.text) + '</h2>';
-                html += '<p class="asq-question-instruction asq-question-instruction--center">' + this.escHtml(instructionText) + '</p>';
+                if (instructionText) {
+                    html += '<p class="asq-question-instruction asq-question-instruction--center">' + this.escHtml(instructionText) + '</p>';
+                }
                 html += '<div class="asq-answers-grid asq-answers-grid--images">';
                 for (var i = 0; i < fu.answers.length; i++) {
                     var a = fu.answers[i];
@@ -311,7 +319,9 @@
                 html += '<div class="asq-text-layout">';
                 html += '<div class="asq-text-left">';
                 html += '<h2 class="asq-question-text">' + this.escHtml(fu.text) + '</h2>';
-                html += '<p class="asq-question-instruction">' + this.escHtml(instructionText) + '</p>';
+                if (instructionText) {
+                    html += '<p class="asq-question-instruction">' + this.escHtml(instructionText) + '</p>';
+                }
                 html += '</div>';
                 html += '<div class="asq-text-right">';
                 html += '<div class="asq-answers-grid asq-answers-grid--text">';

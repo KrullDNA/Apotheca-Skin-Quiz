@@ -173,7 +173,7 @@ return array(
         array(
             'id'          => 'Q5',
             'text'        => __( 'Which of these are you using at the moment?', 'apotheca-skin-quiz' ),
-            'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
+            'instruction' => __( 'Select all that apply.', 'apotheca-skin-quiz' ),
             'multiple'    => true,
             'answers'     => array(
                 array( 'key' => 'A', 'text' => __( 'Something with an acid in it, or anything that exfoliates', 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
@@ -280,7 +280,7 @@ return array(
         array(
             'id'          => 'Q9',
             'text'        => __( 'Over the last couple of years, what changes do you see in your skin?', 'apotheca-skin-quiz' ),
-            'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
+            'instruction' => __( 'Select all that apply.', 'apotheca-skin-quiz' ),
             'multiple'    => true,
             'answers'     => array(
                 array( 'key' => 'A', 'text' => __( "It's drier or tighter than it used to be", 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
@@ -325,7 +325,7 @@ return array(
         array(
             'id'          => 'Q12',
             'text'        => __( 'Are any of these happening with your skin?', 'apotheca-skin-quiz' ),
-            'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
+            'instruction' => __( 'Select all that apply.', 'apotheca-skin-quiz' ),
             'multiple'    => true,
             'answers'     => array(
                 array( 'key' => 'A', 'text' => __( 'Redness that keeps hanging around', 'apotheca-skin-quiz' ), 'findings' => array( 'F11' ) ),
