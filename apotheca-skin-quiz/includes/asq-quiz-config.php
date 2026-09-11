@@ -201,7 +201,7 @@ return array(
         // so a drop in oil on its own isn't read as hormonal without corroboration.
         array(
             'id'       => 'Q7',
-            'text'     => __( 'Where does your skin sit on oiliness?', 'apotheca-skin-quiz' ),
+            'text'     => __( 'How oily is your skin?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'answers'  => array(
                 array( 'key' => 'A', 'text' => __( 'Oily across most of my face', 'apotheca-skin-quiz' ), 'findings' => array( 'F7' ) ),
