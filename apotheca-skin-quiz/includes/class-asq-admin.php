@@ -444,6 +444,29 @@ class ASQ_Admin {
             <?php esc_html_e( 'Edit how each question and option reads. This is shared across every quiz. Leave a field blank to use the built-in wording shown as its placeholder. Which findings each option feeds, and the quiz logic, are set in code and are not affected by anything here.', 'apotheca-skin-quiz' ); ?>
         </p>
 
+        <?php
+        // A safety valve. When the question set is redesigned (as in v2.0.0),
+        // wording you saved against the old order can land on the wrong
+        // question. Ticking this and saving clears every wording edit below and
+        // returns to the built-in defaults, so you can re-apply tweaks cleanly.
+        $has_overrides = ! empty( ASQ_Config::overrides() );
+        ?>
+        <p style="margin:0 0 16px;padding:10px 12px;background:#fcf9e8;border:1px solid #f0e6b8;border-radius:4px;">
+            <label style="display:flex;gap:8px;align-items:flex-start;">
+                <input type="checkbox" name="asq_reset_questions" value="1" style="margin-top:3px;"<?php disabled( ! $has_overrides ); ?>>
+                <span>
+                    <strong><?php esc_html_e( 'Reset all question wording to the built-in defaults.', 'apotheca-skin-quiz' ); ?></strong><br>
+                    <span class="description">
+                        <?php
+                        echo $has_overrides
+                            ? esc_html__( 'Tick this and press Update to clear every wording edit below. Use it if a question and its options look mismatched after an update. Findings and quiz logic are never touched.', 'apotheca-skin-quiz' )
+                            : esc_html__( 'Nothing to reset. You have not saved any wording edits, so every question is already using its built-in default.', 'apotheca-skin-quiz' );
+                        ?>
+                    </span>
+                </span>
+            </label>
+        </p>
+
         <?php foreach ( $effective as $i => $q ) :
             $qid  = isset( $q['id'] ) ? $q['id'] : ( 'Q' . ( $i + 1 ) );
             $def  = isset( $defaults[ $i ] ) ? $defaults[ $i ] : $q;
@@ -583,7 +606,11 @@ class ASQ_Admin {
         update_post_meta( $post_id, '_asq_email_styles', $email_styles );
 
         // Save shared question wording overrides (see ASQ_Config::overrides()).
-        if ( isset( $_POST['asq_questions'] ) && is_array( $_POST['asq_questions'] ) ) {
+        // A reset request wins: clear every wording edit and ignore the posted
+        // (now stale) fields, so the built-in defaults return in one click.
+        if ( ! empty( $_POST['asq_reset_questions'] ) ) {
+            ASQ_Config::reset_overrides();
+        } elseif ( isset( $_POST['asq_questions'] ) && is_array( $_POST['asq_questions'] ) ) {
             ASQ_Config::save_overrides( wp_unslash( $_POST['asq_questions'] ) );
         }
     }
