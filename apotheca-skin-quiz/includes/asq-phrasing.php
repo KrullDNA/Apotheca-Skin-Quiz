@@ -81,7 +81,7 @@ return array(
         // F1 ── Dehydration, not dryness.
         'F1' => array(
             'describing'   => __( "Moisturiser helps for an hour or two and then the dullness is back. That's the signature of skin that's short of {em}water{/em} rather than short of oil, and the two want different things.", 'apotheca-skin-quiz' ),
-            'probably_not' => __( "This usually isn't dryness in the sense of needing a heavier cream, though that's the reflex. Dry skin is short of oil. What you're describing sounds more like water leaving faster than it should, which is why a richer cream can feel greasy on top and still rough underneath.", 'apotheca-skin-quiz' ),
+            'probably_not' => __( "This usually isn't dryness, the sort a heavier cream fixes, even though that's the first thing most of us reach for. Dry skin is short of oil. What you're describing sounds more like water escaping faster than it should, which is why a richer cream can sit greasy on top and still feel rough underneath.", 'apotheca-skin-quiz' ),
             'worth_trying' => array( 'key' => 'water_then_seal', 'text' => __( "The useful move here usually isn't heavier, it's getting water into the skin and then keeping it there. Look at whether anything in your routine is doing that first job at all, before you reach for something richer.", 'apotheca-skin-quiz' ) ),
         ),
 
