@@ -187,7 +187,7 @@ return array(
         // Q6 ── Reacting to things that used to be fine.
         array(
             'id'       => 'Q6',
-            'text'     => __( 'Has anything started stinging, flushing or reacting that used to be fine?', 'apotheca-skin-quiz' ),
+            'text'     => __( 'Have any products started stinging, flushing or reacting that used to be fine?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'answers'  => array(
                 array( 'key' => 'A', 'text' => __( "Yes, and it's most things now", 'apotheca-skin-quiz' ), 'findings' => array( 'F5' ) ),
