@@ -293,10 +293,11 @@ return array(
 
         // Q10 ── Age range. Skippable, with the reason given in the question.
         array(
-            'id'       => 'Q10',
-            'text'     => __( 'Which age range are you in? This changes what is most likely, and nothing else.', 'apotheca-skin-quiz' ),
-            'multiple' => false,
-            'optional' => true,
+            'id'          => 'Q10',
+            'text'        => __( 'Which age range are you in?', 'apotheca-skin-quiz' ),
+            'instruction' => __( "Skin behaves a bit differently at different ages, so this helps us read your answers. That's the only reason we ask.", 'apotheca-skin-quiz' ),
+            'multiple'    => false,
+            'optional'    => true,
             'answers'  => array(
                 array( 'key' => 'A', 'text' => __( '30-39', 'apotheca-skin-quiz' ), 'findings' => array() ),
                 array( 'key' => 'B', 'text' => __( '40-49', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
