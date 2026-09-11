@@ -2076,7 +2076,7 @@ class ASQ_Elementor_Widget extends Widget_Base {
             <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Email-copy form', 'apotheca-skin-quiz' ); ?></span>
             <div class="asq-gate asq-emailcopy">
                 <p class="asq-gate-lead"><?php esc_html_e( 'Want your results by email?', 'apotheca-skin-quiz' ); ?></p>
-                <p class="asq-emailcopy-sub"><?php esc_html_e( "We'll send you a copy to keep.", 'apotheca-skin-quiz' ); ?></p>
+                <p class="asq-emailcopy-sub"><?php esc_html_e( "If you'd like a copy by email, add your address here. One tick covers it, and you can leave any time.", 'apotheca-skin-quiz' ); ?></p>
                 <div class="asq-gate-form">
                     <input type="email" class="asq-email-input" placeholder="<?php esc_attr_e( 'Enter your email address', 'apotheca-skin-quiz' ); ?>">
                     <label class="asq-consent-label"><input type="checkbox" class="asq-consent-checkbox" checked><span><?php esc_html_e( 'Yes, email me my result and send me skincare thinking and news from Apotheca®.', 'apotheca-skin-quiz' ); ?></span></label>
