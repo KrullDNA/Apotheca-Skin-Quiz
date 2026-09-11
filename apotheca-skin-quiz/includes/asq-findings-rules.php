@@ -130,15 +130,18 @@ return array(
             ),
         ),
 
-        // F6 ── Hormonal shift pattern. Skin that stopped being oily (Q7=D) with
-        // corroborating change (Q7a=A or B), or a change over time (Q9=A or B)
-        // in the 40+ ranges (Q10=B, C or D). A drop in oil on its own is not
-        // read as hormonal without one of these.
+        // F6 ── Hormonal shift pattern. Reads the perimenopause cluster on Q9
+        // (A drier, B less firm, C jaw/chin breakouts):
+        //   - skin that stopped being oily (Q7=D) with corroboration (Q7a=A/B), or
+        //   - two or more cluster changes at any age (a strong pattern), or
+        //   - one or more cluster changes in the 40+ ranges (Q10=B, C or D).
+        // A single change in a younger range is left to speak for itself.
         'F6' => array(
             'priority'   => 8,
             'fires_when' => array(
                 array( array( 'q' => 'Q7', 'keys' => array( 'D' ) ), array( 'q' => 'Q7a', 'keys' => array( 'A', 'B' ) ) ),
-                array( array( 'q' => 'Q9', 'keys' => array( 'A', 'B' ) ), array( 'q' => 'Q10', 'keys' => array( 'B', 'C', 'D' ) ) ),
+                array( array( 'q' => 'Q9', 'keys' => array( 'A', 'B', 'C' ), 'min' => 2 ) ),
+                array( array( 'q' => 'Q9', 'keys' => array( 'A', 'B', 'C' ) ), array( 'q' => 'Q10', 'keys' => array( 'B', 'C', 'D' ) ) ),
             ),
         ),
 
@@ -151,12 +154,12 @@ return array(
             ),
         ),
 
-        // F9 ── Environmental or seasonal. Q9=D, or Q9=A with Q10=A.
+        // F9 ── Environmental or seasonal. Q9=D (flares with the weather or the
+        // seasons).
         'F9' => array(
             'priority'   => 10,
             'fires_when' => array(
                 array( array( 'q' => 'Q9', 'keys' => array( 'D' ) ) ),
-                array( array( 'q' => 'Q9', 'keys' => array( 'A' ) ), array( 'q' => 'Q10', 'keys' => array( 'A' ) ) ),
             ),
         ),
 

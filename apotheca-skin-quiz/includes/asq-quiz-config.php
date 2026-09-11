@@ -118,7 +118,7 @@ return array(
         // the barrier-under-supported finding (F13).
         array(
             'id'       => 'Q2',
-            'text'     => __( 'How does your skin feel twenty minutes after you cleanse, before you put anything on?', 'apotheca-skin-quiz' ),
+            'text'     => __( 'How does your skin feel straight after you cleanse, before you put anything on?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'answers'  => array(
                 array(
@@ -243,8 +243,8 @@ return array(
                     'findings'  => array(),
                     'follow_up' => array(
                         'id'       => 'Q8a',
-                        'text'     => __( 'Do you notice any of this on your skin?', 'apotheca-skin-quiz' ),
-                        'instruction' => __( 'Redness, or marks and patches that linger, especially after time outside or later in the day.', 'apotheca-skin-quiz' ),
+                        'text'     => __( 'Do you get redness, or marks and patches that linger?', 'apotheca-skin-quiz' ),
+                        'instruction' => __( 'Especially after time outside, or later in the day.', 'apotheca-skin-quiz' ),
                         'multiple' => false,
                         'answers'  => array(
                             array( 'key' => 'A', 'text' => __( 'Yes, fairly often', 'apotheca-skin-quiz' ), 'findings' => array( 'F14' ) ),
@@ -259,8 +259,8 @@ return array(
                     'findings'  => array(),
                     'follow_up' => array(
                         'id'       => 'Q8a',
-                        'text'     => __( 'Do you notice any of this on your skin?', 'apotheca-skin-quiz' ),
-                        'instruction' => __( 'Redness, or marks and patches that linger, especially after time outside or later in the day.', 'apotheca-skin-quiz' ),
+                        'text'     => __( 'Do you get redness, or marks and patches that linger?', 'apotheca-skin-quiz' ),
+                        'instruction' => __( 'Especially after time outside, or later in the day.', 'apotheca-skin-quiz' ),
                         'multiple' => false,
                         'answers'  => array(
                             array( 'key' => 'A', 'text' => __( 'Yes, fairly often', 'apotheca-skin-quiz' ), 'findings' => array( 'F14' ) ),
@@ -272,16 +272,22 @@ return array(
             ),
         ),
 
-        // Q9 ── Change over the last couple of years.
+        // Q9 ── What has changed. Self-contained (names "your skin") and the
+        // options are the changes themselves, so the question and answers sit on
+        // the same footing. Multi-select: change is rarely one thing. The first
+        // three are the perimenopause cluster (feed F6), the fourth is seasonal
+        // (feeds F9), and "no, it's been steady" clears it.
         array(
-            'id'       => 'Q9',
-            'text'     => __( 'Has any of this changed in the last couple of years?', 'apotheca-skin-quiz' ),
-            'multiple' => false,
-            'answers'  => array(
-                array( 'key' => 'A', 'text' => __( 'Yes, fairly suddenly', 'apotheca-skin-quiz' ), 'findings' => array( 'F6', 'F9' ) ),
-                array( 'key' => 'B', 'text' => __( 'Yes, gradually', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
-                array( 'key' => 'C', 'text' => __( "No, it's been like this a long time", 'apotheca-skin-quiz' ), 'findings' => array() ),
-                array( 'key' => 'D', 'text' => __( 'It changes with the seasons', 'apotheca-skin-quiz' ), 'findings' => array( 'F9' ) ),
+            'id'          => 'Q9',
+            'text'        => __( 'Over the last couple of years, what changes do you see in your skin?', 'apotheca-skin-quiz' ),
+            'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
+            'multiple'    => true,
+            'answers'     => array(
+                array( 'key' => 'A', 'text' => __( "It's drier or tighter than it used to be", 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                array( 'key' => 'B', 'text' => __( "It's less firm, or a bit less bouncy", 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                array( 'key' => 'C', 'text' => __( 'More breakouts, especially along my jaw or chin', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                array( 'key' => 'D', 'text' => __( 'It flares up with the weather or the seasons', 'apotheca-skin-quiz' ), 'findings' => array( 'F9' ) ),
+                array( 'key' => 'E', 'text' => __( "No, it's been steady", 'apotheca-skin-quiz' ), 'findings' => array() ),
             ),
         ),
 
@@ -303,7 +309,7 @@ return array(
         // Q11 ── The medical safety gate. Multi-select.
         array(
             'id'          => 'Q11',
-            'text'        => __( 'Is any of this happening?', 'apotheca-skin-quiz' ),
+            'text'        => __( 'Are any of these happening with your skin?', 'apotheca-skin-quiz' ),
             'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
             'multiple'    => true,
             'answers'     => array(
