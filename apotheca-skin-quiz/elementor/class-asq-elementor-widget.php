@@ -2018,7 +2018,7 @@ class ASQ_Elementor_Widget extends Widget_Base {
 
         $questions = ASQ_Config::questions();
         $q         = isset( $questions[0] ) ? $questions[0] : array( 'text' => 'Question', 'answers' => array() );
-        $instr     = ! empty( $q['instruction'] ) ? $q['instruction'] : __( 'Select one option', 'apotheca-skin-quiz' );
+        $instr     = ! empty( $q['instruction'] ) ? $q['instruction'] : ( ! empty( $q['multiple'] ) ? __( 'Select all that apply.', 'apotheca-skin-quiz' ) : '' );
         $answers   = array_slice( isset( $q['answers'] ) ? $q['answers'] : array(), 0, 4 );
 
         // A neutral placeholder thumbnail so read-next cards preview with an image.
@@ -2044,7 +2044,7 @@ class ASQ_Elementor_Widget extends Widget_Base {
                     <div class="asq-text-layout">
                         <div class="asq-text-left">
                             <h2 class="asq-question-text"><?php echo ASQ_Config::kses_copy( $q['text'] ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitised inline HTML ?></h2>
-                            <p class="asq-question-instruction"><?php echo ASQ_Config::kses_copy( $instr ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitised inline HTML ?></p>
+                            <?php if ( $instr ) : ?><p class="asq-question-instruction"><?php echo ASQ_Config::kses_copy( $instr ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitised inline HTML ?></p><?php endif; ?>
                         </div>
                         <div class="asq-text-right">
                             <div class="asq-answers-grid asq-answers-grid--text">
