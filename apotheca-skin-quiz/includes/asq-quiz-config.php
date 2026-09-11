@@ -217,8 +217,8 @@ return array(
                         'instruction' => __( 'Things like more dryness, less bounce or firmness, or the odd breakout along your jaw.', 'apotheca-skin-quiz' ),
                         'multiple' => false,
                         'answers'  => array(
-                            array( 'key' => 'A', 'text' => __( 'Yes, that sounds about right', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
-                            array( 'key' => 'B', 'text' => __( 'Maybe one of those', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                            array( 'key' => 'A', 'text' => __( 'Yes, other things have changed too', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                            array( 'key' => 'B', 'text' => __( 'Maybe one or two', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
                             array( 'key' => 'C', 'text' => __( 'No, just the oil', 'apotheca-skin-quiz' ), 'findings' => array() ),
                         ),
                     ),
