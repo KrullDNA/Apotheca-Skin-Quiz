@@ -131,6 +131,15 @@
                 self.startOver();
             });
 
+            // Jump down to the read-next articles, which sit below Start over.
+            this.$el.on('click', '.asq-readnext-jump', function () {
+                var el = self.$el.find('.asq-readnext-wrap')[0];
+                if (el && el.scrollIntoView) {
+                    try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                    catch (e) { el.scrollIntoView(); }
+                }
+            });
+
             // "Start again" mid-quiz: confirm, then wipe answers and restart.
             this.$el.on('click', '.asq-restart', function () {
                 var msg = asqFrontend.i18n.restart_confirm;
@@ -863,10 +872,19 @@
             var $container = this.$resultsScreen.find('.asq-results-container');
             var $readnext  = this.$resultsScreen.find('.asq-readnext-wrap');
 
+            // Read-next content, and a jump button that appears in the reading
+            // only when there is a read-next section, so the articles below the
+            // Start-over button are easy to reach and hard to scroll past. Same
+            // style as Start over.
+            var rn = (data.reading_readnext_html || '').trim();
+            var jumpBtn = rn
+                ? '<div class="asq-readnext-jump-wrap"><button type="button" class="asq-btn asq-btn-secondary asq-readnext-jump">' + this.escHtml(asqFrontend.i18n.read_next_jump) + '</button></div>'
+                : '';
+
             if (data.is_gate) {
                 // The medical gate response stands alone.
                 $title.hide();
-                $container.html((data.reading_html || '').trim());
+                $container.html((data.reading_html || '').trim() + jumpBtn);
             } else {
                 $title.show();
                 // The whole reading is shown to everyone, no gate. The result
@@ -880,6 +898,9 @@
                 html += '<div class="asq-reading-rest">' + rest + '</div>';
                 html += '</div>';
 
+                // A jump straight to the read-next articles, right under the reading.
+                html += jumpBtn;
+
                 // Below the reading, offer an optional "email me a copy" form.
                 // It never hides anything. Skip it if she came from her own
                 // emailed link, or already asked for a copy on this device.
@@ -892,7 +913,6 @@
             }
 
             // Read-next: full width, below the reading and the Start-over button.
-            var rn = (data.reading_readnext_html || '').trim();
             if ($readnext.length) {
                 if (rn) {
                     $readnext.html(rn).prop('hidden', false);

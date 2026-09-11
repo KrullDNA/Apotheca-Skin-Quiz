@@ -112,6 +112,7 @@ class ASQ_Frontend {
                 'your_results'      => __( 'Your results', 'apotheca-skin-quiz' ),
                 'start_over'        => __( 'Start over', 'apotheca-skin-quiz' ),
                 'start_again'       => __( 'Start again', 'apotheca-skin-quiz' ),
+                'read_next_jump'    => __( "See what's worth reading", 'apotheca-skin-quiz' ),
                 'restart_confirm'   => __( 'Start the quiz again? Your answers so far will be cleared.', 'apotheca-skin-quiz' ),
                 'complete'          => __( 'Complete', 'apotheca-skin-quiz' ),
             ),

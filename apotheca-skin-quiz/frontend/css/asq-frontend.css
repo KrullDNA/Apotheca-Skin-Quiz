@@ -541,6 +541,12 @@ i.asq-loading-icon {
     margin-top: 32px;
 }
 
+/* Jump-to-read-next button, sits under the reading. Centred like Start over. */
+.asq-readnext-jump-wrap {
+    text-align: center;
+    margin-top: 24px;
+}
+
 /* Results grid */
 
 .asq-results-grid {

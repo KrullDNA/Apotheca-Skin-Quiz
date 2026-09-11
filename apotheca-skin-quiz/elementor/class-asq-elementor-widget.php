@@ -2103,6 +2103,7 @@ class ASQ_Elementor_Widget extends Widget_Base {
                             <p class="asq-reading-p"><?php esc_html_e( 'A third sample paragraph.', 'apotheca-skin-quiz' ); ?></p>
                         </section>
                     </div>
+                    <div class="asq-readnext-jump-wrap"><button type="button" class="asq-btn asq-btn-secondary asq-readnext-jump"><?php esc_html_e( "See what's worth reading", 'apotheca-skin-quiz' ); ?></button></div>
                 </div>
                 <div class="asq-results-actions">
                     <button type="button" class="asq-btn asq-btn-secondary asq-start-over"><?php esc_html_e( 'Start over', 'apotheca-skin-quiz' ); ?></button>
