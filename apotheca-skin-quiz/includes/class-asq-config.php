@@ -287,6 +287,18 @@ class ASQ_Config {
     }
 
     /**
+     * Clear every saved wording override, returning all questions and options
+     * to their built-in defaults. Used by the admin reset control, chiefly to
+     * recover after a question-set redesign leaves old edits on the wrong slot.
+     */
+    public static function reset_overrides() {
+        delete_option( self::OPTION_OVERRIDES );
+        self::$questions_cache = null;
+        self::$index_by_id     = null;
+        self::$followups_by_id = null;
+    }
+
+    /**
      * The findings map: id => human label.
      */
     public static function findings() {
