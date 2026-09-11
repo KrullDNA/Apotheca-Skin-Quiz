@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Loads the single quiz configuration array and reads from it.
  *
- * Everything about the ten questions lives in asq-quiz-config.php. This class
+ * Everything about the questions lives in asq-quiz-config.php. This class
  * is the only thing that reads that file, so the flow, the placeholder result
  * and the email all go through the same source of truth.
  */
@@ -124,6 +124,31 @@ class ASQ_Config {
                     if ( isset( $o['answers'][ $key ]['note'] ) && '' !== $o['answers'][ $key ]['note'] ) {
                         $questions[ $i ]['answers'][ $ai ]['note'] = $o['answers'][ $key ]['note'];
                     }
+
+                    // Follow-up (branch) wording, if this option opens one.
+                    if ( ! empty( $o['answers'][ $key ]['follow_up'] ) && ! empty( $questions[ $i ]['answers'][ $ai ]['follow_up'] ) ) {
+                        $ofu = $o['answers'][ $key ]['follow_up'];
+                        if ( ! empty( $ofu['text'] ) ) {
+                            $questions[ $i ]['answers'][ $ai ]['follow_up']['text'] = $ofu['text'];
+                        }
+                        if ( isset( $ofu['instruction'] ) && '' !== $ofu['instruction'] ) {
+                            $questions[ $i ]['answers'][ $ai ]['follow_up']['instruction'] = $ofu['instruction'];
+                        }
+                        if ( ! empty( $ofu['answers'] ) && is_array( $ofu['answers'] ) && ! empty( $questions[ $i ]['answers'][ $ai ]['follow_up']['answers'] ) ) {
+                            foreach ( $questions[ $i ]['answers'][ $ai ]['follow_up']['answers'] as $fai => $fa ) {
+                                $fkey = isset( $fa['key'] ) ? $fa['key'] : '';
+                                if ( '' === $fkey || empty( $ofu['answers'][ $fkey ] ) ) {
+                                    continue;
+                                }
+                                if ( ! empty( $ofu['answers'][ $fkey ]['text'] ) ) {
+                                    $questions[ $i ]['answers'][ $ai ]['follow_up']['answers'][ $fai ]['text'] = $ofu['answers'][ $fkey ]['text'];
+                                }
+                                if ( isset( $ofu['answers'][ $fkey ]['note'] ) && '' !== $ofu['answers'][ $fkey ]['note'] ) {
+                                    $questions[ $i ]['answers'][ $ai ]['follow_up']['answers'][ $fai ]['note'] = $ofu['answers'][ $fkey ]['note'];
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -188,6 +213,57 @@ class ASQ_Config {
                     if ( '' !== $anote && $anote !== ( $def_ans[ $key ]['note'] ?? '' ) ) {
                         $a_entry['note'] = $anote;
                     }
+
+                    // Follow-up (branch) wording diffs, if this option opens one.
+                    if ( ! empty( $af['follow_up'] ) && is_array( $af['follow_up'] ) && ! empty( $def_ans[ $key ]['follow_up'] ) ) {
+                        $def_fu   = $def_ans[ $key ]['follow_up'];
+                        $fu_entry = array();
+
+                        $ftext = isset( $af['follow_up']['text'] ) ? self::kses_copy( $af['follow_up']['text'] ) : '';
+                        if ( '' !== $ftext && $ftext !== ( $def_fu['text'] ?? '' ) ) {
+                            $fu_entry['text'] = $ftext;
+                        }
+                        $finstr = isset( $af['follow_up']['instruction'] ) ? self::kses_copy( $af['follow_up']['instruction'] ) : '';
+                        if ( '' !== $finstr && $finstr !== ( $def_fu['instruction'] ?? '' ) ) {
+                            $fu_entry['instruction'] = $finstr;
+                        }
+
+                        if ( ! empty( $af['follow_up']['answers'] ) && is_array( $af['follow_up']['answers'] ) ) {
+                            $def_fa = array();
+                            foreach ( ( $def_fu['answers'] ?? array() ) as $fa ) {
+                                if ( isset( $fa['key'] ) ) {
+                                    $def_fa[ $fa['key'] ] = $fa;
+                                }
+                            }
+                            $fu_answers = array();
+                            foreach ( $af['follow_up']['answers'] as $fkey => $faf ) {
+                                $fkey = sanitize_text_field( $fkey );
+                                if ( ! isset( $def_fa[ $fkey ] ) || ! is_array( $faf ) ) {
+                                    continue;
+                                }
+                                $fa_entry = array();
+                                $fatext   = isset( $faf['text'] ) ? self::kses_copy( $faf['text'] ) : '';
+                                if ( '' !== $fatext && $fatext !== ( $def_fa[ $fkey ]['text'] ?? '' ) ) {
+                                    $fa_entry['text'] = $fatext;
+                                }
+                                $fanote = isset( $faf['note'] ) ? self::kses_copy( $faf['note'] ) : '';
+                                if ( '' !== $fanote && $fanote !== ( $def_fa[ $fkey ]['note'] ?? '' ) ) {
+                                    $fa_entry['note'] = $fanote;
+                                }
+                                if ( $fa_entry ) {
+                                    $fu_answers[ $fkey ] = $fa_entry;
+                                }
+                            }
+                            if ( $fu_answers ) {
+                                $fu_entry['answers'] = $fu_answers;
+                            }
+                        }
+
+                        if ( $fu_entry ) {
+                            $a_entry['follow_up'] = $fu_entry;
+                        }
+                    }
+
                     if ( $a_entry ) {
                         $answers[ $key ] = $a_entry;
                     }
@@ -207,6 +283,7 @@ class ASQ_Config {
         // Drop the per-request caches so the new wording is seen immediately.
         self::$questions_cache = null;
         self::$index_by_id     = null;
+        self::$followups_by_id = null;
     }
 
     /**
@@ -251,13 +328,38 @@ class ASQ_Config {
         foreach ( self::questions() as $q ) {
             $answers = array();
             foreach ( $q['answers'] as $a ) {
-                $answers[] = array(
+                $entry = array(
                     'text'        => $a['text'],
                     'description' => '',
                     'image'       => '',
                     // Optional supporting line shown under the option (e.g. Q5 E).
                     'note'        => isset( $a['note'] ) ? $a['note'] : '',
                 );
+
+                // A conditional follow-up question, shown only when this option
+                // is chosen. Only the wording the browser needs is exposed; the
+                // finding mappings stay server-side. The front-end branching JS
+                // reads a.follow_up.{text,instruction,multiple,answers}.
+                if ( ! empty( $a['follow_up']['answers'] ) ) {
+                    $fu       = $a['follow_up'];
+                    $fu_ans   = array();
+                    foreach ( $fu['answers'] as $fa ) {
+                        $fu_ans[] = array(
+                            'text'        => isset( $fa['text'] ) ? $fa['text'] : '',
+                            'description' => '',
+                            'image'       => '',
+                            'note'        => isset( $fa['note'] ) ? $fa['note'] : '',
+                        );
+                    }
+                    $entry['follow_up'] = array(
+                        'text'        => isset( $fu['text'] ) ? $fu['text'] : '',
+                        'instruction' => isset( $fu['instruction'] ) ? $fu['instruction'] : '',
+                        'multiple'    => ! empty( $fu['multiple'] ),
+                        'answers'     => $fu_ans,
+                    );
+                }
+
+                $answers[] = $entry;
             }
             $out[] = array(
                 'text'        => $q['text'],
@@ -275,7 +377,7 @@ class ASQ_Config {
      * @param array $answers { questionIndex => [answerIndex, …] }
      * @return array [ [ 'question' => str, 'answers' => [str, …] ], … ]
      */
-    public static function resolve_answers( $answers ) {
+    public static function resolve_answers( $answers, $followups = array() ) {
         $questions = self::questions();
         $readable  = array();
 
@@ -284,10 +386,10 @@ class ASQ_Config {
             if ( ! isset( $questions[ $qi ] ) ) {
                 continue;
             }
-            $q     = $questions[ $qi ];
-            $texts = array();
-            foreach ( (array) $selected as $ai ) {
-                $ai = (int) $ai;
+            $q       = $questions[ $qi ];
+            $sel_ints = array_map( 'intval', (array) $selected );
+            $texts   = array();
+            foreach ( $sel_ints as $ai ) {
                 if ( isset( $q['answers'][ $ai ]['text'] ) ) {
                     $texts[] = $q['answers'][ $ai ]['text'];
                 }
@@ -296,6 +398,33 @@ class ASQ_Config {
                 'question' => $q['text'],
                 'answers'  => $texts,
             );
+
+            // Append any follow-up (branch) question that was answered because
+            // one of the chosen options opened it, so the stored record and the
+            // admin views show the whole conversation, branches included.
+            foreach ( $sel_ints as $ai ) {
+                if ( empty( $q['answers'][ $ai ]['follow_up']['answers'] ) ) {
+                    continue;
+                }
+                $compound = $qi . '_' . $ai;
+                if ( empty( $followups[ $compound ] ) ) {
+                    continue;
+                }
+                $fu      = $q['answers'][ $ai ]['follow_up'];
+                $fu_text = array();
+                foreach ( (array) $followups[ $compound ] as $fai ) {
+                    $fai = (int) $fai;
+                    if ( isset( $fu['answers'][ $fai ]['text'] ) ) {
+                        $fu_text[] = $fu['answers'][ $fai ]['text'];
+                    }
+                }
+                if ( $fu_text ) {
+                    $readable[] = array(
+                        'question' => isset( $fu['text'] ) ? $fu['text'] : '',
+                        'answers'  => $fu_text,
+                    );
+                }
+            }
         }
 
         return $readable;
@@ -322,12 +451,20 @@ class ASQ_Config {
     }
 
     /**
-     * Convert raw answer indices into the option keys the rules refer to.
+     * Convert raw answer indices into the option keys the rules refer to,
+     * merging any follow-up (branch) answers under their own follow-up ids so a
+     * rule can fire on a branch answer just as it does on a main answer.
      *
-     * @param array $answers { questionIndex => [answerIndex, …] }
-     * @return array { 'Q1' => ['D'], 'Q10' => ['A','C'], … }
+     * A follow-up answer only counts when its parent option is actually
+     * selected. That guard means a change of mind (picking a parent option that
+     * has no follow-up after having answered one earlier) can never leave a
+     * stale branch answer influencing the result.
+     *
+     * @param array $answers   { questionIndex => [answerIndex, …] }
+     * @param array $followups { "qi_ai" => [followupAnswerIndex, …] }
+     * @return array { 'Q1' => ['D'], 'Q2a' => ['C'], 'Q11' => ['A','C'], … }
      */
-    public static function selected_keys( $answers ) {
+    public static function selected_keys( $answers, $followups = array() ) {
         $questions = self::questions();
         $out       = array();
 
@@ -346,7 +483,69 @@ class ASQ_Config {
             }
             $out[ $qid ] = $keys;
         }
+
+        // Follow-up (branch) answers. Keyed "qi_ai" by the browser: qi is the
+        // parent question index, ai the parent answer index.
+        foreach ( (array) $followups as $compound => $selected ) {
+            $parts = explode( '_', (string) $compound );
+            if ( 2 !== count( $parts ) ) {
+                continue;
+            }
+            $qi = (int) $parts[0];
+            $ai = (int) $parts[1];
+
+            // Only honour the branch if its parent option is actually chosen.
+            $parent_selected = isset( $answers[ $qi ] ) ? array_map( 'intval', (array) $answers[ $qi ] ) : array();
+            if ( ! in_array( $ai, $parent_selected, true ) ) {
+                continue;
+            }
+            if ( empty( $questions[ $qi ]['answers'][ $ai ]['follow_up']['answers'] ) ) {
+                continue;
+            }
+            $fu = $questions[ $qi ]['answers'][ $ai ]['follow_up'];
+            if ( empty( $fu['id'] ) ) {
+                continue;
+            }
+            $keys = array();
+            foreach ( (array) $selected as $fai ) {
+                $fai = (int) $fai;
+                if ( isset( $fu['answers'][ $fai ]['key'] ) ) {
+                    $keys[] = $fu['answers'][ $fai ]['key'];
+                }
+            }
+            if ( $keys ) {
+                $out[ $fu['id'] ] = $keys;
+            }
+        }
+
         return $out;
+    }
+
+    /* ────────── follow-up (branch) question lookups ────────── */
+
+    /** @var array|null Cached map of follow-up id => follow-up definition. */
+    protected static $followups_by_id = null;
+
+    /**
+     * Map each follow-up question's id (Q2a, Q7a, Q8a …) to its definition, so
+     * the engine and presenter can resolve a branch question's text and its
+     * answer labels the same way they resolve a main question's.
+     */
+    public static function followups_by_id() {
+        if ( null === self::$followups_by_id ) {
+            self::$followups_by_id = array();
+            foreach ( self::questions() as $q ) {
+                if ( empty( $q['answers'] ) ) {
+                    continue;
+                }
+                foreach ( $q['answers'] as $a ) {
+                    if ( ! empty( $a['follow_up']['id'] ) ) {
+                        self::$followups_by_id[ $a['follow_up']['id'] ] = $a['follow_up'];
+                    }
+                }
+            }
+        }
+        return self::$followups_by_id;
     }
 
     /**
@@ -371,29 +570,42 @@ class ASQ_Config {
     }
 
     /**
-     * The text of a question, by its short id.
+     * The text of a question, by its short id. Resolves follow-up ids too.
      */
     public static function question_text_by_id( $qid ) {
         $map = self::question_index_by_id();
-        if ( ! isset( $map[ $qid ] ) ) {
-            return '';
+        if ( isset( $map[ $qid ] ) ) {
+            $q = self::questions()[ $map[ $qid ] ];
+            return isset( $q['text'] ) ? $q['text'] : '';
         }
-        $q = self::questions()[ $map[ $qid ] ];
-        return isset( $q['text'] ) ? $q['text'] : '';
+        $fus = self::followups_by_id();
+        if ( isset( $fus[ $qid ] ) ) {
+            return isset( $fus[ $qid ]['text'] ) ? $fus[ $qid ]['text'] : '';
+        }
+        return '';
     }
 
     /**
-     * The text of one answer, by its question id and option key.
+     * The text of one answer, by its question id and option key. Resolves
+     * follow-up ids too, so a branch answer can be woven back into the reading.
      */
     public static function answer_text( $qid, $key ) {
         $map = self::question_index_by_id();
-        if ( ! isset( $map[ $qid ] ) ) {
+        if ( isset( $map[ $qid ] ) ) {
+            $q = self::questions()[ $map[ $qid ] ];
+            foreach ( $q['answers'] as $a ) {
+                if ( isset( $a['key'] ) && $a['key'] === $key ) {
+                    return $a['text'];
+                }
+            }
             return '';
         }
-        $q = self::questions()[ $map[ $qid ] ];
-        foreach ( $q['answers'] as $a ) {
-            if ( isset( $a['key'] ) && $a['key'] === $key ) {
-                return $a['text'];
+        $fus = self::followups_by_id();
+        if ( isset( $fus[ $qid ]['answers'] ) ) {
+            foreach ( $fus[ $qid ]['answers'] as $a ) {
+                if ( isset( $a['key'] ) && $a['key'] === $key ) {
+                    return isset( $a['text'] ) ? $a['text'] : '';
+                }
             }
         }
         return '';

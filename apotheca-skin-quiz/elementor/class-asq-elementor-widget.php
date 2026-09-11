@@ -2058,10 +2058,10 @@ class ASQ_Elementor_Widget extends Widget_Base {
                         </div>
                     </div>
                     <div class="asq-nav-buttons">
-                        <button type="button" class="asq-btn asq-btn-secondary asq-btn-back"><?php esc_html_e( 'Back', 'apotheca-skin-quiz' ); ?></button>
-                        <button type="button" class="asq-btn asq-btn-primary asq-btn-continue"><?php esc_html_e( 'Continue', 'apotheca-skin-quiz' ); ?></button>
+                        <div class="asq-nav-left"><button type="button" class="asq-btn asq-btn-secondary asq-btn-back"><?php esc_html_e( 'Back', 'apotheca-skin-quiz' ); ?></button></div>
+                        <div class="asq-nav-center"><button type="button" class="asq-btn asq-btn-secondary asq-restart"><?php esc_html_e( 'Start again', 'apotheca-skin-quiz' ); ?></button></div>
+                        <div class="asq-nav-right"><button type="button" class="asq-btn asq-btn-primary asq-btn-continue"><?php esc_html_e( 'Continue', 'apotheca-skin-quiz' ); ?></button></div>
                     </div>
-                    <div class="asq-restart-row"><button type="button" class="asq-restart"><?php esc_html_e( 'Start again', 'apotheca-skin-quiz' ); ?></button></div>
                 </div>
             </div>
 

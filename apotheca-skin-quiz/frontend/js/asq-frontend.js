@@ -234,22 +234,21 @@
                 html += '</div>';
             }
 
-            // Navigation buttons
+            // Navigation buttons: Back (left), Start again (centre), Continue (right).
             html += '<div class="asq-nav-buttons">';
+            html += '<div class="asq-nav-left">';
             if (idx > 0) {
                 html += '<button type="button" class="asq-btn asq-btn-secondary asq-btn-back">' + asqFrontend.i18n.back + '</button>';
-            } else {
-                html += '<span></span>';
             }
+            html += '</div>';
+            html += '<div class="asq-nav-center"><button type="button" class="asq-btn asq-btn-secondary asq-restart">' + this.escHtml(asqFrontend.i18n.start_again) + '</button></div>';
+            html += '<div class="asq-nav-right">';
             if (q.multiple) {
                 var hasSelection = this.answers[idx] && this.answers[idx].length > 0;
                 html += '<button type="button" class="asq-btn asq-btn-primary asq-btn-continue' + (hasSelection ? '' : ' asq-btn-disabled') + '"' + (hasSelection ? '' : ' disabled') + '>' + asqFrontend.i18n.next + '</button>';
             }
             html += '</div>';
-
-            // A centred "Start again" link, so she can wipe her answers and
-            // begin from the first question at any point.
-            html += '<div class="asq-restart-row"><button type="button" class="asq-restart">' + this.escHtml(asqFrontend.i18n.start_again) + '</button></div>';
+            html += '</div>';
 
             html += '</div>';
 
@@ -325,14 +324,17 @@
                 html += '</div>';
             }
 
-            // Navigation buttons – always show back for follow-ups
+            // Navigation buttons: Back (left), Start again (centre), Continue (right).
             html += '<div class="asq-nav-buttons">';
-            html += '<button type="button" class="asq-btn asq-btn-secondary asq-btn-back">' + asqFrontend.i18n.back + '</button>';
+            html += '<div class="asq-nav-left"><button type="button" class="asq-btn asq-btn-secondary asq-btn-back">' + asqFrontend.i18n.back + '</button></div>';
+            html += '<div class="asq-nav-center"><button type="button" class="asq-btn asq-btn-secondary asq-restart">' + this.escHtml(asqFrontend.i18n.start_again) + '</button></div>';
+            html += '<div class="asq-nav-right">';
             if (fu.multiple) {
                 var key = qi + '_' + ai;
                 var hasSelection = this.followupAnswers[key] && this.followupAnswers[key].length > 0;
                 html += '<button type="button" class="asq-btn asq-btn-primary asq-btn-continue' + (hasSelection ? '' : ' asq-btn-disabled') + '"' + (hasSelection ? '' : ' disabled') + '>' + asqFrontend.i18n.next + '</button>';
             }
+            html += '</div>';
             html += '</div>';
 
             html += '</div>';

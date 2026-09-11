@@ -1,18 +1,20 @@
 <?php
 /**
- * The findings engine rules, section 5 of the brief, as data.
+ * The findings engine rules, as data.
  *
- * Each finding lists the situations that fire it. The structure reads like
- * the brief's table so a rule can be changed here without touching the
- * engine:
+ * Each finding lists the situations that fire it. The structure reads like a
+ * table so a rule can be changed here without touching the engine:
  *
  *   fires_when  A list of clauses. The finding fires if ANY clause is true.
  *               A clause is a list of conditions, ALL of which must be true.
  *               A condition is a question id plus the answer keys that satisfy
  *               it, e.g. array( 'q' => 'Q6', 'keys' => array( 'A' ) ) means
- *               "Q6 = A". Keys are the A/B/C... option letters from the
- *               question config. A condition may add 'min' => N to require at
- *               least N of its keys to be ticked (multi-select), e.g.
+ *               "Q6 = A". A condition may reference a follow-up question by its
+ *               own id (Q2a, Q7a, Q8a) exactly as it references a main question;
+ *               a follow-up answer only counts when its parent option is chosen,
+ *               so branch answers are real, not cosmetic. A condition may add
+ *               'min' => N to require at least N of its keys to be ticked
+ *               (multi-select), e.g.
  *               array( 'q' => 'Q5', 'keys' => array( 'A','B','C' ), 'min' => 2 ).
  *   suppresses  Findings removed when this one fires (same problem described
  *               twice). An entry is either a plain finding id (unconditional,
@@ -41,11 +43,11 @@ return array(
 
     'findings' => array(
 
-        // F11 ── Medical referral. Any tick on Q10 other than E.
+        // F11 ── Medical referral. Any tick on Q11 other than E.
         'F11' => array(
             'priority'   => 0,
             'fires_when' => array(
-                array( array( 'q' => 'Q10', 'keys' => array( 'A', 'B', 'C', 'D' ) ) ),
+                array( array( 'q' => 'Q11', 'keys' => array( 'A', 'B', 'C', 'D' ) ) ),
             ),
         ),
 
@@ -60,10 +62,23 @@ return array(
             'suppresses' => array( 'F2' ),
         ),
 
-        // F3 ── Over-exfoliation. Q4=A, or Q5=A (an acid or exfoliant is in use)
-        // with (Q6=A or B). It no longer fires on uncertainty alone.
-        'F3' => array(
+        // F13 ── Barrier under-supported. She cleanses to a tight feeling (Q2=A)
+        // and then doesn't reliably reseal with a moisturiser (Q2a=B or C). The
+        // follow-up answer is what fires this, so it is a genuine adaptive result.
+        // Distinct from F5 (a worn barrier) and F2 (a stripping cleanser): this
+        // is the missing resealing step. It can sit alongside either; the
+        // "worth trying" for each carries a different action, so it never repeats.
+        'F13' => array(
             'priority'   => 2,
+            'fires_when' => array(
+                array( array( 'q' => 'Q2a', 'keys' => array( 'B', 'C' ) ) ),
+            ),
+        ),
+
+        // F3 ── Over-exfoliation. Q4=A, or Q5=A (an acid or exfoliant is in use)
+        // with (Q6=A or B).
+        'F3' => array(
+            'priority'   => 3,
             'fires_when' => array(
                 array( array( 'q' => 'Q4', 'keys' => array( 'A' ) ) ),
                 array( array( 'q' => 'Q5', 'keys' => array( 'A' ) ), array( 'q' => 'Q6', 'keys' => array( 'A', 'B' ) ) ),
@@ -77,9 +92,9 @@ return array(
             ),
         ),
 
-        // F2 ── The cleanser is the problem. Q2=A or D (suppressed by F5).
+        // F2 ── The cleanser is doing too much. Q2=A or D (suppressed by F5).
         'F2' => array(
-            'priority'   => 3,
+            'priority'   => 4,
             'fires_when' => array(
                 array( array( 'q' => 'Q2', 'keys' => array( 'A', 'D' ) ) ),
             ),
@@ -87,7 +102,7 @@ return array(
 
         // F1 ── Dehydration, not dryness. Q3=A or C, or Q2=D with (Q7=A or B).
         'F1' => array(
-            'priority'   => 4,
+            'priority'   => 5,
             'fires_when' => array(
                 array( array( 'q' => 'Q3', 'keys' => array( 'A', 'C' ) ) ),
                 array( array( 'q' => 'Q2', 'keys' => array( 'D' ) ), array( 'q' => 'Q7', 'keys' => array( 'A', 'B' ) ) ),
@@ -95,48 +110,60 @@ return array(
         ),
 
         // F4 ── Too many actives at once. Two or more of Q5 A/B/C ticked (acid,
-        // retinoid, vitamin C), or Q1=C. It no longer fires on uncertainty
-        // alone. Suppressed by F3 only when Q5=A is also ticked.
+        // retinoid, vitamin C), or Q1=C. Suppressed by F3 only when Q5=A is also
+        // ticked.
         'F4' => array(
-            'priority'   => 5,
+            'priority'   => 6,
             'fires_when' => array(
                 array( array( 'q' => 'Q5', 'keys' => array( 'A', 'B', 'C' ), 'min' => 2 ) ),
                 array( array( 'q' => 'Q1', 'keys' => array( 'C' ) ) ),
             ),
         ),
 
-        // F6 ── Hormonal shift pattern. Q7=D, or (Q8=A or B) with (Q9=B, C or D).
-        'F6' => array(
-            'priority'   => 6,
+        // F14 ── Photoprotection gap. A daily-use gap (Q8=C or D) together with a
+        // visible signal (Q8a=A or B: lingering redness or marks). Both are
+        // required, so it never fires on the gap alone and stays advisory.
+        'F14' => array(
+            'priority'   => 7,
             'fires_when' => array(
-                array( array( 'q' => 'Q7', 'keys' => array( 'D' ) ) ),
-                array( array( 'q' => 'Q8', 'keys' => array( 'A', 'B' ) ), array( 'q' => 'Q9', 'keys' => array( 'B', 'C', 'D' ) ) ),
+                array( array( 'q' => 'Q8', 'keys' => array( 'C', 'D' ) ), array( 'q' => 'Q8a', 'keys' => array( 'A', 'B' ) ) ),
+            ),
+        ),
+
+        // F6 ── Hormonal shift pattern. Skin that stopped being oily (Q7=D) with
+        // corroborating change (Q7a=A or B), or a change over time (Q9=A or B)
+        // in the 40+ ranges (Q10=B, C or D). A drop in oil on its own is not
+        // read as hormonal without one of these.
+        'F6' => array(
+            'priority'   => 8,
+            'fires_when' => array(
+                array( array( 'q' => 'Q7', 'keys' => array( 'D' ) ), array( 'q' => 'Q7a', 'keys' => array( 'A', 'B' ) ) ),
+                array( array( 'q' => 'Q9', 'keys' => array( 'A', 'B' ) ), array( 'q' => 'Q10', 'keys' => array( 'B', 'C', 'D' ) ) ),
             ),
         ),
 
         // F7 ── Congestion read as dryness. Q7=A with Q2=C, or Q3=C with Q7=A.
         'F7' => array(
-            'priority'   => 7,
+            'priority'   => 9,
             'fires_when' => array(
                 array( array( 'q' => 'Q7', 'keys' => array( 'A' ) ), array( 'q' => 'Q2', 'keys' => array( 'C' ) ) ),
                 array( array( 'q' => 'Q3', 'keys' => array( 'C' ) ), array( 'q' => 'Q7', 'keys' => array( 'A' ) ) ),
             ),
         ),
 
-        // F9 ── Environmental or seasonal. Q8=D, or Q8=A with Q9=A.
+        // F9 ── Environmental or seasonal. Q9=D, or Q9=A with Q10=A.
         'F9' => array(
-            'priority'   => 8,
+            'priority'   => 10,
             'fires_when' => array(
-                array( array( 'q' => 'Q8', 'keys' => array( 'D' ) ) ),
-                array( array( 'q' => 'Q8', 'keys' => array( 'A' ) ), array( 'q' => 'Q9', 'keys' => array( 'A' ) ) ),
+                array( array( 'q' => 'Q9', 'keys' => array( 'D' ) ) ),
+                array( array( 'q' => 'Q9', 'keys' => array( 'A' ) ), array( 'q' => 'Q10', 'keys' => array( 'A' ) ) ),
             ),
         ),
 
-        // F12 ── Not sure what's in her products. Q5=E, or Q4=D. This is the
-        // finding that "I don't know" now feeds, instead of being read as
-        // evidence of a fault. It carries the Ingredient List Decoder link.
+        // F12 ── Not sure what's in her products. Q5=E, or Q4=D. Carries the
+        // Ingredient List Decoder link.
         'F12' => array(
-            'priority'   => 9,
+            'priority'   => 11,
             'fires_when' => array(
                 array( array( 'q' => 'Q5', 'keys' => array( 'E' ) ) ),
                 array( array( 'q' => 'Q4', 'keys' => array( 'D' ) ) ),

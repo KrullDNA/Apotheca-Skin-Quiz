@@ -428,7 +428,7 @@ class ASQ_Admin {
     /* ─── Questions box ─── */
 
     /**
-     * The wording of the ten questions is editable here so the copy can be
+     * The wording of the questions is editable here so the copy can be
      * softened if it reads too clinical. Only the wording changes: the options'
      * order, the findings each feeds, and the quiz logic all stay in code, so
      * nothing here can break how the quiz scores. The wording is shared across
@@ -495,6 +495,47 @@ class ASQ_Admin {
                                 placeholder="<?php echo esc_attr( $adef['note'] ?? '' ); ?>">
                             <span class="description"><?php esc_html_e( 'Supporting note shown under this option.', 'apotheca-skin-quiz' ); ?></span>
                         </p>
+                    <?php endif; ?>
+
+                    <?php if ( ! empty( $a['follow_up'] ) ) :
+                        $fu   = $a['follow_up'];
+                        $fdef = isset( $adef['follow_up'] ) ? $adef['follow_up'] : $fu;
+                        ?>
+                        <div style="margin:0 0 12px 26px;padding:8px 12px;border-left:3px solid #dcdcde;background:#f6f7f7;">
+                            <p style="margin:0 0 6px;color:#646970;font-style:italic;">
+                                <?php esc_html_e( 'Follow-up question, shown only when this option is chosen.', 'apotheca-skin-quiz' ); ?>
+                            </p>
+                            <p style="margin:0 0 6px;">
+                                <label style="display:block;font-weight:600;"><?php esc_html_e( 'Follow-up question', 'apotheca-skin-quiz' ); ?></label>
+                                <input type="text" class="large-text" name="asq_questions[<?php echo esc_attr( $qid ); ?>][answers][<?php echo esc_attr( $key ); ?>][follow_up][text]"
+                                    value="<?php echo esc_attr( $fu['text'] ?? '' ); ?>"
+                                    placeholder="<?php echo esc_attr( $fdef['text'] ?? '' ); ?>">
+                            </p>
+                            <?php if ( isset( $fdef['instruction'] ) ) : ?>
+                                <p style="margin:0 0 6px;">
+                                    <label style="display:block;font-weight:600;"><?php esc_html_e( 'Follow-up instruction line', 'apotheca-skin-quiz' ); ?></label>
+                                    <input type="text" class="large-text" name="asq_questions[<?php echo esc_attr( $qid ); ?>][answers][<?php echo esc_attr( $key ); ?>][follow_up][instruction]"
+                                        value="<?php echo esc_attr( $fu['instruction'] ?? '' ); ?>"
+                                        placeholder="<?php echo esc_attr( $fdef['instruction'] ?? '' ); ?>">
+                                </p>
+                            <?php endif; ?>
+                            <label style="display:block;font-weight:600;"><?php esc_html_e( 'Follow-up options', 'apotheca-skin-quiz' ); ?></label>
+                            <?php foreach ( (array) $fu['answers'] as $fai => $fa ) :
+                                $fkey  = isset( $fa['key'] ) ? $fa['key'] : '';
+                                $fadef = isset( $fdef['answers'][ $fai ] ) ? $fdef['answers'][ $fai ] : $fa;
+                                if ( '' === $fkey ) { continue; }
+                                ?>
+                                <p style="margin:0 0 4px;display:flex;gap:8px;align-items:baseline;">
+                                    <span style="width:18px;color:#646970;"><?php echo esc_html( $fkey ); ?></span>
+                                    <input type="text" class="large-text" style="flex:1;" name="asq_questions[<?php echo esc_attr( $qid ); ?>][answers][<?php echo esc_attr( $key ); ?>][follow_up][answers][<?php echo esc_attr( $fkey ); ?>][text]"
+                                        value="<?php echo esc_attr( $fa['text'] ?? '' ); ?>"
+                                        placeholder="<?php echo esc_attr( $fadef['text'] ?? '' ); ?>">
+                                    <?php if ( ! empty( $fa['findings'] ) ) : ?>
+                                        <span style="color:#b9b9c0;white-space:nowrap;" title="<?php esc_attr_e( 'Findings this option feeds (set in code)', 'apotheca-skin-quiz' ); ?>">&rarr; <?php echo esc_html( implode( ', ', $fa['findings'] ) ); ?></span>
+                                    <?php endif; ?>
+                                </p>
+                            <?php endforeach; ?>
+                        </div>
                     <?php endif; ?>
                 <?php endforeach; ?>
             </fieldset>

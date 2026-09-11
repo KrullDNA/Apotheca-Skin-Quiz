@@ -173,6 +173,10 @@ class ASQ_Email {
         if ( ! is_array( $answers ) ) {
             $answers = array();
         }
+        $followups = json_decode( stripslashes( $_POST['followup_answers'] ?? '{}' ), true );
+        if ( ! is_array( $followups ) ) {
+            $followups = array();
+        }
 
         $email_styles = $this->get_email_styles( $finder_id );
         $finder_title = get_the_title( $finder_id );
@@ -184,7 +188,7 @@ class ASQ_Email {
         // Medical gate: never store answers or findings, never join a lead,
         // never push to a connector. Record only that the gate fired, and send
         // a plain acknowledgement containing no findings.
-        if ( ASQ_Engine::is_gate( $answers ) ) {
+        if ( ASQ_Engine::is_gate( $answers, $followups ) ) {
             ASQ_Leads::record_gate( $finder_id );
             $ack  = $this->build_ack_body( $finder_title, $email_styles );
             $sent = wp_mail( $email, $subject, $ack, $headers );
@@ -208,8 +212,8 @@ class ASQ_Email {
 
         // Recompute the findings on the server, so what is stored and pushed is
         // trustworthy, then resolve the answers to readable text.
-        $findings = ASQ_Engine::evaluate( $answers );
-        $readable = ASQ_Config::resolve_answers( $answers );
+        $findings = ASQ_Engine::evaluate( $answers, $followups );
+        $readable = ASQ_Config::resolve_answers( $answers, $followups );
 
         // Store the submission, joined to the lead by email. This fires
         // asq_lead_recorded, which queues the connector push (findings as
@@ -228,7 +232,7 @@ class ASQ_Email {
         // Build the reading and email it: the four sections flat, read-next
         // with thumbnails, a working unsubscribe, and the consent wording.
         $articles = ASQ_Read_Next::for_findings( ASQ_Engine::read_next_findings( $findings ), 0 );
-        $reading  = ASQ_Presenter::build_reading( $findings, $answers, $articles, $decoder_url );
+        $reading  = ASQ_Presenter::build_reading( $findings, $answers, $articles, $decoder_url, false, $followups );
         $body     = $this->build_email_body( $finder_title, $reading, array(
             'results_url'     => $results_url,
             'unsubscribe_url' => ASQ_Leads::unsubscribe_url( $lead_id ),
@@ -341,12 +345,16 @@ class ASQ_Email {
         $user = wp_get_current_user();
         $to   = $requested ?: ( $user && is_email( $user->user_email ) ? $user->user_email : get_option( 'admin_email' ) );
 
-        // A representative sample answer set (several findings), run through
-        // the real engine so the preview shows the true reading layout.
-        $sample_answers = array( 0 => array( 3 ), 1 => array( 0 ), 2 => array( 0 ), 3 => array( 3 ), 4 => array( 3 ), 5 => array( 0 ), 6 => array( 1 ), 7 => array( 0 ), 8 => array( 1 ), 9 => array( 4 ) );
-        $findings = ASQ_Engine::evaluate( $sample_answers );
+        // A representative sample answer set, run through the real engine so the
+        // preview shows the true reading layout. This path chooses a tight
+        // after-cleanse feel with no reseal (fires F13 via the Q2a branch), a
+        // stripping cleanser (F2), and an SPF gap with a visible signal (fires
+        // F14 via the Q8a branch), so the preview exercises both branch findings.
+        $sample_answers = array( 0 => array( 0 ), 1 => array( 0 ), 2 => array( 1 ), 3 => array( 2 ), 4 => array( 3 ), 5 => array( 2 ), 6 => array( 1 ), 7 => array( 3 ), 8 => array( 2 ), 9 => array( 0 ) );
+        $sample_followups = array( '1_0' => array( 2 ), '7_3' => array( 0 ) );
+        $findings = ASQ_Engine::evaluate( $sample_answers, $sample_followups );
         $articles = ASQ_Read_Next::for_findings( ASQ_Engine::read_next_findings( $findings ), 0 );
-        $reading  = ASQ_Presenter::build_reading( $findings, $sample_answers, $articles );
+        $reading  = ASQ_Presenter::build_reading( $findings, $sample_answers, $articles, '', false, $sample_followups );
 
         $email_styles = $this->get_email_styles( $finder_id );
         $finder_title = get_the_title( $finder_id );

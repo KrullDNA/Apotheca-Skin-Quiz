@@ -46,7 +46,7 @@ class ASQ_Frontend {
             return '<p>' . esc_html__( 'Apotheca Skin Quiz: invalid ID.', 'apotheca-skin-quiz' ) . '</p>';
         }
 
-        // The ten questions are defined in one place, the config array, and
+        // The questions are defined in one place, the config array, and
         // shared across every quiz (front door). See asq-quiz-config.php.
         $questions = ASQ_Config::questions();
         if ( empty( $questions ) ) {
