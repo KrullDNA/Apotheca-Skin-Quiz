@@ -1100,6 +1100,29 @@ i.asq-loading-icon {
     display: block;
 }
 
+/* === "Start again" link on the question screens === */
+.asq-restart-row {
+    text-align: center;
+    margin-top: 18px;
+}
+.asq-restart {
+    background: none;
+    border: none;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--asq-text-light, #777);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+}
+.asq-restart:hover {
+    color: var(--asq-text, #333);
+}
+.asq-restart:focus-visible {
+    outline: 2px solid var(--asq-accent, #333);
+    outline-offset: 2px;
+}
+
 /* === The reading === */
 .asq-reading {
     max-width: 680px;
@@ -1239,6 +1262,25 @@ i.asq-loading-icon {
 .asq-email-message {
     font-size: 14px;
     margin: 10px 0 0;
+}
+
+/* === Read-next: full-width box below the reading and the Start-over button === */
+.asq-readnext-wrap {
+    margin-top: 40px;
+    padding: 28px 24px;
+    background: var(--asq-readnext-bg, #f5f5f5);
+    border-radius: var(--asq-readnext-radius, 12px);
+}
+.asq-readnext-wrap .asq-reading-section {
+    margin-bottom: 0;
+}
+/* "Read next" reads as a proper heading in its box, not a small section label. */
+.asq-readnext-wrap .asq-reading-heading {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0;
+    color: var(--asq-text, #333);
+    margin-bottom: 4px;
 }
 
 /* === Read-next articles === */

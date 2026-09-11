@@ -32,6 +32,9 @@ class ASQ_Presenter {
      */
     protected static $gate_ticked = '';
 
+    /** @var bool Whether read-next links open in a new tab (Elementor control). */
+    protected static $rn_new_tab = false;
+
     /**
      * The internal handshake between the quiz and the decoder. Hard-coded on
      * both sides on purpose: a name read from settings in two places is a quiet
@@ -206,9 +209,10 @@ class ASQ_Presenter {
      * @return array Either a gate reading ( is_gate => true, heading, body )
      *               or a normal reading ( is_gate => false, sections => [...] ).
      */
-    public static function build_reading( $findings, $answers, $articles = array(), $decoder_url = '' ) {
+    public static function build_reading( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false ) {
         // Set for this render; resolve() reads it when it meets a {decoder} token.
         self::$decoder_url = is_string( $decoder_url ) ? $decoder_url : '';
+        self::$rn_new_tab  = (bool) $rn_new_tab;
         self::$gate_ticked = ''; // populated only for a gate reading, below
 
         $p    = self::phrasing();
@@ -285,8 +289,8 @@ class ASQ_Presenter {
     /**
      * Build and render the reading to HTML in one step.
      */
-    public static function render( $findings, $answers, $articles = array(), $decoder_url = '' ) {
-        return self::render_html( self::build_reading( $findings, $answers, $articles, $decoder_url ) );
+    public static function render( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false ) {
+        return self::render_html( self::build_reading( $findings, $answers, $articles, $decoder_url, $rn_new_tab ) );
     }
 
     /**
@@ -321,31 +325,57 @@ class ASQ_Presenter {
     }
 
     /**
-     * Render the reading split for the email gate: the first section on its
-     * own, and the rest (with read-next) as a separate fragment the front end
-     * puts behind the form. A gate reading is not split.
+     * Render the reading in parts for the results screen: the reading body and
+     * the read-next block come back separately, so the front end can lay the
+     * read-next out full-width below the Start-over button.
      *
-     * @return array is_gate => bool; for a gate: html; otherwise intro, rest.
+     * @return array is_gate => bool; for a gate: html + readnext; otherwise
+     *               intro, rest and readnext.
      */
-    public static function render_split( $findings, $answers, $articles = array(), $decoder_url = '' ) {
-        $reading = self::build_reading( $findings, $answers, $articles, $decoder_url );
+    public static function render_split( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false ) {
+        $reading = self::build_reading( $findings, $answers, $articles, $decoder_url, $rn_new_tab );
+        $p       = self::phrasing();
 
+        // The medical gate: the calm box, and its read-next separately.
         if ( ! empty( $reading['is_gate'] ) ) {
-            return array( 'is_gate' => true, 'html' => self::render_html( $reading ) );
+            $html  = '<div class="asq-reading asq-reading--gate">';
+            $html .= '<h3 class="asq-reading-heading asq-reading-heading--gate">' . esc_html( self::texturize( $reading['heading'] ) ) . '</h3>';
+            $html .= '<div class="asq-reading-section asq-reading-section--gate"><p class="asq-reading-p">' . $reading['body'] . '</p></div>';
+            $html .= '</div>';
+
+            $readnext = '';
+            if ( ! empty( $reading['articles'] ) ) {
+                $intro    = isset( $p['gate']['read_next_intro'] ) ? $p['gate']['read_next_intro'] : '';
+                $readnext = self::render_section( array(
+                    'key'      => 'read_next',
+                    'heading'  => $p['sections']['read_next'],
+                    'intro'    => $intro,
+                    'articles' => (array) $reading['articles'],
+                ) );
+            }
+
+            return array( 'is_gate' => true, 'html' => $html, 'readnext' => $readnext );
         }
 
-        $sections = $reading['sections'];
+        // A normal reading: body sections, with read-next pulled out separately.
         $intro    = '';
         $rest     = '';
-        foreach ( $sections as $i => $section ) {
-            if ( 0 === $i ) {
+        $readnext = '';
+        $first    = true;
+        foreach ( $reading['sections'] as $section ) {
+            if ( 'read_next' === $section['key'] ) {
+                $readnext = self::render_section( $section );
+                continue;
+            }
+            if ( $first ) {
                 $intro .= self::render_section( $section );
+                $first  = false;
             } else {
                 $rest .= self::render_section( $section );
             }
         }
 
-        return array( 'is_gate' => false, 'intro' => $intro, 'rest' => $rest );
+        return array( 'is_gate' => false, 'intro' => $intro, 'rest' => $rest, 'readnext' => $readnext );
     }
 
     /**
@@ -377,13 +407,15 @@ class ASQ_Presenter {
         $p     = self::phrasing();
         $label = isset( $p['read_more'] ) ? $p['read_more'] : __( 'Read more', 'apotheca-skin-quiz' );
 
+        $target = self::$rn_new_tab ? ' target="_blank" rel="noopener noreferrer"' : '';
+
         $html = '<div class="asq-readnext-cards">';
         foreach ( (array) $articles as $card ) {
             $url = isset( $card['url'] ) ? $card['url'] : '';
             if ( '' === $url ) {
                 continue;
             }
-            $html .= '<a class="asq-readnext-card" href="' . esc_url( $url ) . '">';
+            $html .= '<a class="asq-readnext-card" href="' . esc_url( $url ) . '"' . $target . '>';
             if ( ! empty( $card['thumb'] ) ) {
                 $html .= '<span class="asq-readnext-thumb"><img src="' . esc_url( $card['thumb'] ) . '" alt="" loading="lazy"></span>';
             }
