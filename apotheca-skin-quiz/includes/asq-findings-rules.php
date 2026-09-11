@@ -43,11 +43,11 @@ return array(
 
     'findings' => array(
 
-        // F11 ── Medical referral. Any tick on Q11 other than E.
+        // F11 ── Medical referral. Any tick on Q12 (the gate) other than E.
         'F11' => array(
             'priority'   => 0,
             'fires_when' => array(
-                array( array( 'q' => 'Q11', 'keys' => array( 'A', 'B', 'C', 'D' ) ) ),
+                array( array( 'q' => 'Q12', 'keys' => array( 'A', 'B', 'C', 'D' ) ) ),
             ),
         ),
 
@@ -143,6 +143,10 @@ return array(
                 array( array( 'q' => 'Q9', 'keys' => array( 'A', 'B', 'C' ), 'min' => 2 ) ),
                 array( array( 'q' => 'Q9', 'keys' => array( 'A', 'B', 'C' ) ), array( 'q' => 'Q10', 'keys' => array( 'B', 'C', 'D' ) ) ),
             ),
+            // Perimenopause/menopause does not apply to men: switch this reading
+            // off outright for Q11=B (Man). It is left available for Woman,
+            // Non-binary and Prefer-not-to-say (and still needs the cluster above).
+            'suppress_when' => array( array( 'q' => 'Q11', 'keys' => array( 'B' ) ) ),
         ),
 
         // F7 ── Congestion read as dryness. Q7=A with Q2=C, or Q3=C with Q7=A.

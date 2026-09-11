@@ -47,6 +47,14 @@ class ASQ_Presenter {
     const MAX_TRIES = 2;
 
     /**
+     * Worth-trying actions that always show, even past MAX_TRIES, because they
+     * are the whole point of their finding. The Ingredient List Decoder link
+     * (F12) is one: "not sure what's in your products" must always offer the
+     * way to find out, no matter how many other findings fired alongside it.
+     */
+    const PINNED_TRIES = array( 'decode_products' );
+
+    /**
      * The option holding editable result wording, overlaid on the code copy in
      * asq-phrasing.php. Only wording is stored; the tokens ({a:Qn}, {em}…{/em},
      * {decoder}…{/decoder}) live inside the wording and are preserved verbatim.
@@ -255,8 +263,9 @@ class ASQ_Presenter {
                 $probably[] = self::resolve( $copy['probably_not'], $amap );
             }
             if ( ! empty( $copy['worth_trying']['text'] ) ) {
-                $key = isset( $copy['worth_trying']['key'] ) ? $copy['worth_trying']['key'] : $id;
-                if ( ! isset( $seen_try[ $key ] ) && count( $tries ) < self::MAX_TRIES ) {
+                $key    = isset( $copy['worth_trying']['key'] ) ? $copy['worth_trying']['key'] : $id;
+                $pinned = in_array( $key, self::PINNED_TRIES, true );
+                if ( ! isset( $seen_try[ $key ] ) && ( $pinned || count( $tries ) < self::MAX_TRIES ) ) {
                     $seen_try[ $key ] = true;
                     $tries[]          = self::resolve( $copy['worth_trying']['text'], $amap );
                 }
