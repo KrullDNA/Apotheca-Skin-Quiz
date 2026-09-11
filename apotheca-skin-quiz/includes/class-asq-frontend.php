@@ -38,6 +38,7 @@ class ASQ_Frontend {
             'tab_day_label'    => '',
             'tab_night_label'  => '',
             'decoder_url'      => '',
+            'rn_new_tab'       => '',
         ), $atts, 'apotheca_skin_quiz' );
 
         $finder_id = absint( $atts['id'] );
@@ -108,6 +109,8 @@ class ASQ_Frontend {
                 'sent_confirm'      => __( 'Sent. Check your inbox for your copy.', 'apotheca-skin-quiz' ),
                 'your_results'      => __( 'Your results', 'apotheca-skin-quiz' ),
                 'start_over'        => __( 'Start over', 'apotheca-skin-quiz' ),
+                'start_again'       => __( 'Start again', 'apotheca-skin-quiz' ),
+                'restart_confirm'   => __( 'Start the quiz again? Your answers so far will be cleared.', 'apotheca-skin-quiz' ),
                 'complete'          => __( 'Complete', 'apotheca-skin-quiz' ),
             ),
         ) );
@@ -141,6 +144,9 @@ class ASQ_Frontend {
             if ( ! empty( $atts['decoder_url'] ) ) {
                 echo ' data-decoder-url="' . esc_url( $atts['decoder_url'] ) . '"';
             }
+            if ( ! empty( $atts['rn_new_tab'] ) ) {
+                echo ' data-rn-new-tab="1"';
+            }
         ?>>
 
             <!-- Progress bar -->
@@ -171,6 +177,8 @@ class ASQ_Frontend {
                 <div class="asq-results-actions">
                     <button type="button" class="asq-btn asq-btn-secondary asq-start-over"></button>
                 </div>
+                <!-- Read-next sits full width below the reading and the button. -->
+                <div class="asq-readnext-wrap" hidden></div>
             </div>
         </div>
         <?php

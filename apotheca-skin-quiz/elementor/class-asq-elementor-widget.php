@@ -115,6 +115,16 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator'   => 'before',
         ) );
 
+        $this->add_control( 'rn_new_tab', array(
+            'label'        => __( 'Open read-next articles in a new tab', 'apotheca-skin-quiz' ),
+            'type'         => Controls_Manager::SWITCHER,
+            'label_on'     => __( 'Yes', 'apotheca-skin-quiz' ),
+            'label_off'    => __( 'No', 'apotheca-skin-quiz' ),
+            'return_value' => 'yes',
+            'default'      => '',
+            'separator'    => 'before',
+        ) );
+
         $this->end_controls_section();
     }
 
@@ -1197,7 +1207,64 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'tab'   => Controls_Manager::TAB_STYLE,
         ) );
 
+        // The box around the reading text (background, border, padding, margin).
+        $this->add_control( 'results_box_h', array(
+            'label' => __( 'Results box', 'apotheca-skin-quiz' ),
+            'type'  => Controls_Manager::HEADING,
+        ) );
+
+        $this->add_control( 'results_box_bg', array(
+            'label'     => __( 'Background', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-results-container' => 'background-color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Border::get_type(), array(
+            'name'     => 'results_box_border',
+            'selector' => '{{WRAPPER}} .asq-results-container',
+        ) );
+
+        $this->add_responsive_control( 'results_box_radius', array(
+            'label'      => __( 'Border Radius', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-results-container' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'results_box_padding', array(
+            'label'      => __( 'Padding', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-results-container' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'results_box_margin', array(
+            'label'      => __( 'Margin', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-results-container' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Box_Shadow::get_type(), array(
+            'name'     => 'results_box_shadow',
+            'selector' => '{{WRAPPER}} .asq-results-container',
+        ) );
+
         // Title
+        $this->add_control( 'results_title_h', array(
+            'label'     => __( 'Title', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
         $this->add_control( 'results_title_color', array(
             'label'     => __( 'Title Color', 'apotheca-skin-quiz' ),
             'type'      => Controls_Manager::COLOR,
@@ -1634,7 +1701,84 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'tab'   => Controls_Manager::TAB_STYLE,
         ) );
 
+        // The full-width box the whole read-next block sits in.
+        $this->add_control( 'rn_box_h', array(
+            'label' => __( 'Read-next box', 'apotheca-skin-quiz' ),
+            'type'  => Controls_Manager::HEADING,
+        ) );
+
+        $this->add_control( 'rn_box_bg', array(
+            'label'     => __( 'Background', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-wrap' => 'background-color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Border::get_type(), array(
+            'name'     => 'rn_box_border',
+            'selector' => '{{WRAPPER}} .asq-readnext-wrap',
+        ) );
+
+        $this->add_responsive_control( 'rn_box_radius', array(
+            'label'      => __( 'Border Radius', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-wrap' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'rn_box_padding', array(
+            'label'      => __( 'Padding', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-wrap' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_responsive_control( 'rn_box_margin', array(
+            'label'      => __( 'Margin', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', 'em' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-readnext-wrap' => 'margin: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Box_Shadow::get_type(), array(
+            'name'     => 'rn_box_shadow',
+            'selector' => '{{WRAPPER}} .asq-readnext-wrap',
+        ) );
+
+        // The "Read next" heading on the box.
+        $this->add_control( 'rn_heading_h', array(
+            'label'     => __( '"Read next" heading', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'rn_heading_color', array(
+            'label'     => __( 'Heading Colour', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-readnext-wrap .asq-reading-heading' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'rn_heading_typography',
+            'selector' => '{{WRAPPER}} .asq-readnext-wrap .asq-reading-heading',
+        ) );
+
         // Intro line
+        $this->add_control( 'rn_intro_line_h', array(
+            'label'     => __( 'Intro line', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
         $this->add_control( 'rn_intro_color', array(
             'label'     => __( 'Intro Colour', 'apotheca-skin-quiz' ),
             'type'      => Controls_Manager::COLOR,
@@ -1874,24 +2018,25 @@ class ASQ_Elementor_Widget extends Widget_Base {
 
         $questions = ASQ_Config::questions();
         $q         = isset( $questions[0] ) ? $questions[0] : array( 'text' => 'Question', 'answers' => array() );
-        $multiple  = ! empty( $q['multiple'] );
-        $instr     = ! empty( $q['instruction'] ) ? $q['instruction'] : ( $multiple ? __( 'Select all that apply', 'apotheca-skin-quiz' ) : __( 'Select one option', 'apotheca-skin-quiz' ) );
+        $instr     = ! empty( $q['instruction'] ) ? $q['instruction'] : __( 'Select one option', 'apotheca-skin-quiz' );
         $answers   = array_slice( isset( $q['answers'] ) ? $q['answers'] : array(), 0, 4 );
 
-        $cap = 'style="display:block;margin:22px 0 6px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#b9b9c0;"';
+        // A neutral placeholder thumbnail so read-next cards preview with an image.
+        $ph  = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22200%22%20height%3D%22200%22%3E%3Crect%20width%3D%22200%22%20height%3D%22200%22%20fill%3D%22%23e5e7eb%22/%3E%3C/svg%3E';
+        $cap = 'style="display:block;margin:26px 0 6px;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#b9b9c0;"';
 
         ob_start();
         ?>
         <div class="asq-finder" id="asq-finder-<?php echo esc_attr( $finder_id ); ?>">
             <div style="margin:0 0 14px;padding:8px 12px;background:#f6f4fb;border:1px dashed #cdb9f0;border-radius:6px;font-size:12px;color:#6b5aa0;">
-                <?php esc_html_e( 'Editor preview, for styling only. The live quiz is interactive on the published page.', 'apotheca-skin-quiz' ); ?>
+                <?php esc_html_e( 'Editor preview, for styling only. Every screen is shown stacked so you can style each part. The live quiz is interactive on the published page.', 'apotheca-skin-quiz' ); ?>
             </div>
 
-            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Question', 'apotheca-skin-quiz' ); ?></span>
+            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Question screen', 'apotheca-skin-quiz' ); ?></span>
 
             <div class="asq-progress-bar-wrap">
-                <div class="asq-progress-bar"><div class="asq-progress-fill" style="width:20%;"></div></div>
-                <span class="asq-progress-text">20%</span>
+                <div class="asq-progress-bar"><div class="asq-progress-fill" style="width:40%;"></div></div>
+                <span class="asq-progress-text">40%</span>
             </div>
 
             <div class="asq-questions-container">
@@ -1906,39 +2051,79 @@ class ASQ_Elementor_Widget extends Widget_Base {
                                 <?php foreach ( $answers as $idx => $a ) : ?>
                                     <div class="asq-answer-option asq-answer-option--text<?php echo 0 === $idx ? ' asq-selected' : ''; ?>">
                                         <span class="asq-answer-text"><?php echo ASQ_Config::kses_copy( $a['text'] ?? '' ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- sanitised inline HTML ?></span>
-                                        <?php if ( $multiple ) : ?>
-                                            <span class="asq-checkbox"><span class="asq-check-icon"></span></span>
-                                        <?php endif; ?>
+                                        <span class="asq-checkbox"><span class="asq-check-icon"></span></span>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
                         </div>
                     </div>
                     <div class="asq-nav-buttons">
-                        <span></span>
+                        <button type="button" class="asq-btn asq-btn-secondary asq-btn-back"><?php esc_html_e( 'Back', 'apotheca-skin-quiz' ); ?></button>
                         <button type="button" class="asq-btn asq-btn-primary asq-btn-continue"><?php esc_html_e( 'Continue', 'apotheca-skin-quiz' ); ?></button>
                     </div>
+                    <div class="asq-restart-row"><button type="button" class="asq-restart"><?php esc_html_e( 'Start again', 'apotheca-skin-quiz' ); ?></button></div>
                 </div>
             </div>
 
-            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Result', 'apotheca-skin-quiz' ); ?></span>
+            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Loading screen', 'apotheca-skin-quiz' ); ?></span>
+            <div class="asq-loading-screen" style="display:block;">
+                <div class="asq-loading-inner">
+                    <svg class="asq-loading-icon" viewBox="0 0 50 50" width="60" height="60"><circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-dasharray="90, 150"/></svg>
+                    <p class="asq-loading-text"><?php esc_html_e( 'Working out your results…', 'apotheca-skin-quiz' ); ?></p>
+                </div>
+            </div>
+
+            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Email-copy form', 'apotheca-skin-quiz' ); ?></span>
+            <div class="asq-gate asq-emailcopy">
+                <p class="asq-gate-lead"><?php esc_html_e( 'Want your results by email?', 'apotheca-skin-quiz' ); ?></p>
+                <p class="asq-emailcopy-sub"><?php esc_html_e( "We'll send you a copy to keep.", 'apotheca-skin-quiz' ); ?></p>
+                <div class="asq-gate-form">
+                    <input type="email" class="asq-email-input" placeholder="<?php esc_attr_e( 'Enter your email address', 'apotheca-skin-quiz' ); ?>">
+                    <label class="asq-consent-label"><input type="checkbox" class="asq-consent-checkbox" checked><span><?php esc_html_e( 'Yes, email me my result and send me skincare thinking and news from Apotheca®.', 'apotheca-skin-quiz' ); ?></span></label>
+                    <button type="button" class="asq-btn asq-btn-primary asq-send-email"><?php esc_html_e( 'Email me a copy', 'apotheca-skin-quiz' ); ?></button>
+                </div>
+            </div>
+
+            <span <?php echo $cap; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><?php esc_html_e( 'Results screen', 'apotheca-skin-quiz' ); ?></span>
 
             <div class="asq-results-screen" style="display:block;">
-                <h3 class="asq-results-title"><?php esc_html_e( 'Your reading', 'apotheca-skin-quiz' ); ?></h3>
+                <h3 class="asq-results-title"><?php esc_html_e( 'Your results', 'apotheca-skin-quiz' ); ?></h3>
                 <div class="asq-results-container">
                     <div class="asq-reading">
                         <section class="asq-reading-section asq-reading-section--describing">
                             <h3 class="asq-reading-heading"><?php esc_html_e( "What you're describing", 'apotheca-skin-quiz' ); ?></h3>
                             <p class="asq-reading-p"><?php echo esc_html__( 'A sample paragraph so you can style the reading, with an ', 'apotheca-skin-quiz' ); ?><span class="asq-reading-em"><?php esc_html_e( 'emphasised phrase', 'apotheca-skin-quiz' ); ?></span><?php esc_html_e( ' shown in your accent colour.', 'apotheca-skin-quiz' ); ?></p>
                         </section>
+                        <section class="asq-reading-section asq-reading-section--probably_not">
+                            <h3 class="asq-reading-heading"><?php esc_html_e( "What it probably isn't", 'apotheca-skin-quiz' ); ?></h3>
+                            <p class="asq-reading-p"><?php esc_html_e( 'A second sample paragraph, so spacing between sections is visible.', 'apotheca-skin-quiz' ); ?></p>
+                        </section>
                         <section class="asq-reading-section asq-reading-section--worth_trying">
                             <h3 class="asq-reading-heading"><?php esc_html_e( 'One or two things worth trying', 'apotheca-skin-quiz' ); ?></h3>
-                            <p class="asq-reading-p"><?php esc_html_e( 'A second sample paragraph, so spacing between sections is visible.', 'apotheca-skin-quiz' ); ?></p>
+                            <p class="asq-reading-p"><?php esc_html_e( 'A third sample paragraph.', 'apotheca-skin-quiz' ); ?></p>
                         </section>
                     </div>
                 </div>
                 <div class="asq-results-actions">
                     <button type="button" class="asq-btn asq-btn-secondary asq-start-over"><?php esc_html_e( 'Start over', 'apotheca-skin-quiz' ); ?></button>
+                </div>
+                <div class="asq-readnext-wrap">
+                    <section class="asq-reading-section asq-reading-section--read_next">
+                        <h3 class="asq-reading-heading"><?php esc_html_e( 'Read next', 'apotheca-skin-quiz' ); ?></h3>
+                        <p class="asq-reading-p asq-readnext-intro"><?php esc_html_e( 'A few things worth reading next.', 'apotheca-skin-quiz' ); ?></p>
+                        <div class="asq-readnext-cards">
+                            <?php for ( $c = 1; $c <= 3; $c++ ) : ?>
+                                <a class="asq-readnext-card" href="#" onclick="return false;">
+                                    <span class="asq-readnext-thumb"><img src="<?php echo esc_attr( $ph ); ?>" alt=""></span>
+                                    <span class="asq-readnext-body">
+                                        <span class="asq-readnext-title"><?php esc_html_e( 'Sample article title', 'apotheca-skin-quiz' ); ?></span>
+                                        <span class="asq-readnext-excerpt"><?php esc_html_e( 'A short description of the article shows here.', 'apotheca-skin-quiz' ); ?></span>
+                                        <span class="asq-readnext-more"><?php esc_html_e( 'Read more', 'apotheca-skin-quiz' ); ?></span>
+                                    </span>
+                                </a>
+                            <?php endfor; ?>
+                        </div>
+                    </section>
                 </div>
             </div>
         </div>
@@ -1990,6 +2175,10 @@ class ASQ_Elementor_Widget extends Widget_Base {
         }
         if ( $decoder_url ) {
             $shortcode_atts .= ' decoder_url="' . esc_url( $decoder_url ) . '"';
+        }
+
+        if ( ! empty( $settings['rn_new_tab'] ) && 'yes' === $settings['rn_new_tab'] ) {
+            $shortcode_atts .= ' rn_new_tab="1"';
         }
 
         // Read DN labels from finder post meta instead of Elementor settings

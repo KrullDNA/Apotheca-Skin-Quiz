@@ -22,6 +22,7 @@
         this.questions  = $el.data('questions') || [];
         this.options    = $el.data('options') || {};
         this.decoderUrl = $el.data('decoder-url') || '';  // F12 link target, per widget
+        this.rnNewTab   = $el.data('rn-new-tab') ? 1 : 0; // read-next opens in a new tab
         this.current    = 0;
         this.answers    = {};  // { questionIndex: [answerIndices] }
         this.followupAnswers = {};  // { "qi_ai": [followupAnswerIndices] }
@@ -128,6 +129,14 @@
 
             this.$el.on('click', '.asq-start-over', function () {
                 self.startOver();
+            });
+
+            // "Start again" mid-quiz: confirm, then wipe answers and restart.
+            this.$el.on('click', '.asq-restart', function () {
+                var msg = asqFrontend.i18n.restart_confirm;
+                if (!msg || window.confirm(msg)) {
+                    self.startOver();
+                }
             });
         },
 
@@ -237,6 +246,10 @@
                 html += '<button type="button" class="asq-btn asq-btn-primary asq-btn-continue' + (hasSelection ? '' : ' asq-btn-disabled') + '"' + (hasSelection ? '' : ' disabled') + '>' + asqFrontend.i18n.next + '</button>';
             }
             html += '</div>';
+
+            // A centred "Start again" link, so she can wipe her answers and
+            // begin from the first question at any point.
+            html += '<div class="asq-restart-row"><button type="button" class="asq-restart">' + this.escHtml(asqFrontend.i18n.start_again) + '</button></div>';
 
             html += '</div>';
 
@@ -705,6 +718,7 @@
                     consent_text: consentText,
                     asq_hp: $gate.find('.asq-hp-input').val() || '',
                     decoder_url: self.decoderUrl,
+                    rn_new_tab: self.rnNewTab,
                     answers: JSON.stringify(self.answers),
                     followup_answers: JSON.stringify(self.followupAnswers)
                 }, function (res) {
@@ -805,6 +819,7 @@
                 finder_id: this.finderId,
                 source_id: asqFrontend.source_id,
                 decoder_url: this.decoderUrl,
+                rn_new_tab: this.rnNewTab,
                 answers: JSON.stringify(this.answers),
                 followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {
@@ -828,6 +843,7 @@
 
             var $title     = this.$resultsScreen.find('.asq-results-title');
             var $container = this.$resultsScreen.find('.asq-results-container');
+            var $readnext  = this.$resultsScreen.find('.asq-readnext-wrap');
 
             if (data.is_gate) {
                 // The medical gate response stands alone.
@@ -836,8 +852,8 @@
             } else {
                 $title.show();
                 // The whole reading is shown to everyone, no gate. The result
-                // still arrives in two parts from the server (intro + rest); we
-                // simply render them together.
+                // still arrives in parts from the server (intro + rest); we
+                // render them together. Read-next is placed separately, below.
                 var intro = (data.reading_intro_html || '').trim();
                 var rest  = (data.reading_rest_html || '').trim();
 
@@ -855,6 +871,16 @@
 
                 $container.html(html);
                 this.syncConsent();
+            }
+
+            // Read-next: full width, below the reading and the Start-over button.
+            var rn = (data.reading_readnext_html || '').trim();
+            if ($readnext.length) {
+                if (rn) {
+                    $readnext.html(rn).prop('hidden', false);
+                } else {
+                    $readnext.empty().prop('hidden', true);
+                }
             }
 
             // Reveal the results screen. The results container is a static
@@ -886,7 +912,14 @@
 
             this.$resultsScreen.hide().css('opacity', '');
             this.$resultsScreen.find('.asq-results-container').empty();
+            this.$resultsScreen.find('.asq-readnext-wrap').empty().prop('hidden', true);
             this.$loadingScreen.hide();
+
+            // Forget the "already asked for a copy" cookie, so a fresh run
+            // offers the email form again.
+            try {
+                document.cookie = this.cookieName() + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Lax';
+            } catch (e) {}
 
             // Remove asq_results from URL if present.
             if (window.history && window.history.replaceState) {

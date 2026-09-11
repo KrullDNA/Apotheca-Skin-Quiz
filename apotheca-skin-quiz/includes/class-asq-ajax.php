@@ -115,20 +115,25 @@ class ASQ_Ajax {
         // passed through so the F12 reading can link to it.
         $decoder_url = isset( $_POST['decoder_url'] ) ? esc_url_raw( wp_unslash( $_POST['decoder_url'] ) ) : '';
 
+        // Whether read-next links open in a new tab (Elementor content control).
+        $rn_new_tab = ! empty( $_POST['rn_new_tab'] );
+
         // Run the findings engine.
         $findings = ASQ_Engine::evaluate( (array) $answers );
         $is_gate  = ( 1 === count( $findings ) && isset( $findings[0]['id'] ) && 'F11' === $findings[0]['id'] );
 
         // The medical gate replaces the reading. It may offer at most one
         // general article. Return only what the screen needs to show it,
-        // never the answers or findings behind it.
+        // never the answers or findings behind it. Read-next comes back
+        // separately so the screen can lay it out below the reading.
         if ( $is_gate ) {
-            $articles     = ASQ_Read_Next::for_gate( $source_id );
-            $reading_html = ASQ_Presenter::render( $findings, (array) $answers, $articles );
+            $articles = ASQ_Read_Next::for_gate( $source_id );
+            $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab );
             wp_send_json_success( array(
-                'is_gate'      => true,
-                'reading_html' => $reading_html,
-                'options'      => $options,
+                'is_gate'              => true,
+                'reading_html'         => $split['html'],
+                'reading_readnext_html' => $split['readnext'],
+                'options'              => $options,
             ) );
         }
 
@@ -137,13 +142,14 @@ class ASQ_Ajax {
         // true, so their articles can still appear.
         $rn_findings = ASQ_Engine::read_next_findings( $findings );
         $articles    = ASQ_Read_Next::for_findings( $rn_findings, $source_id );
-        $split       = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url );
+        $split       = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab );
 
         wp_send_json_success( array(
-            'is_gate'           => false,
-            'reading_intro_html' => $split['intro'],
-            'reading_rest_html'  => $split['rest'],
-            'options'            => $options,
+            'is_gate'              => false,
+            'reading_intro_html'   => $split['intro'],
+            'reading_rest_html'    => $split['rest'],
+            'reading_readnext_html' => $split['readnext'],
+            'options'              => $options,
         ) );
     }
 }
