@@ -9,7 +9,7 @@
  * Structure:
  *   findings   id => human label
  *   questions  ordered list; each question has:
- *                id          short code (Q1..Q11), for the engine and admin
+ *                id          short code (Q1..Q12), for the engine and admin
  *                text        the question shown to her
  *                instruction optional helper line under the question
  *                multiple    true for a multi-select question
@@ -306,9 +306,24 @@ return array(
             ),
         ),
 
-        // Q11 ── The medical safety gate. Multi-select.
+        // Q11 ── Gender. Used only to switch the hormonal reading (F6) off for
+        // men; it feeds no finding of its own. "Prefer not to say" keeps the
+        // reading available, as it is suppressed only for "Man".
         array(
-            'id'          => 'Q11',
+            'id'       => 'Q11',
+            'text'     => __( "What's your gender?", 'apotheca-skin-quiz' ),
+            'multiple' => false,
+            'answers'  => array(
+                array( 'key' => 'A', 'text' => __( 'Woman', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'B', 'text' => __( 'Man', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'C', 'text' => __( 'Non-binary', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'D', 'text' => __( 'Prefer not to say', 'apotheca-skin-quiz' ), 'findings' => array() ),
+            ),
+        ),
+
+        // Q12 ── The medical safety gate. Multi-select.
+        array(
+            'id'          => 'Q12',
             'text'        => __( 'Are any of these happening with your skin?', 'apotheca-skin-quiz' ),
             'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
             'multiple'    => true,

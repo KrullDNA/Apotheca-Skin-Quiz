@@ -80,6 +80,20 @@ class ASQ_Engine {
             }
         }
 
+        // 2b. Answer-conditional hard suppression. A fired finding is removed
+        // outright when its 'suppress_when' clause matches the answers, meaning
+        // it does not apply to this person at all (e.g. the hormonal reading is
+        // switched off for men). Unlike finding-on-finding suppression, this is
+        // not "true but hidden": it is removed and does not feed read-next.
+        foreach ( $ordinary as $id => $def ) {
+            if ( ! isset( $fired[ $id ] ) || empty( $def['suppress_when'] ) ) {
+                continue;
+            }
+            if ( null !== self::first_matching_clause( array( $def['suppress_when'] ), $selected ) ) {
+                unset( $fired[ $id ] );
+            }
+        }
+
         // 3. Suppression: a fired finding removes those it suppresses. An entry
         // may be a plain id (unconditional) or [ 'id' => …, 'when' => <clause> ]
         // that only suppresses when the clause matches the answers.

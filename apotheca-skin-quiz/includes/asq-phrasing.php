@@ -4,8 +4,9 @@
  *
  * Keyed by finding and by section so any wording can be changed here without
  * touching the renderer. Written in the Apotheca® brand voice: plain words,
- * contractions, UK English, no em dashes, no condition ever named, no product
- * ever recommended.
+ * contractions, UK English, no em dashes, no product ever recommended. Brand
+ * voice may name the life stage plainly (perimenopause, menopause); it never
+ * diagnoses a medical condition or writes as if it has lived the experience.
  *
  * Tokens the renderer understands inside any sentence:
  *   {a:Q2}      her actual answer to that question, woven into the sentence
@@ -50,7 +51,7 @@ return array(
     // offers no reassurance, makes no attempt to be clever.
     'gate' => array(
         'heading'   => __( 'Worth showing to someone', 'apotheca-skin-quiz' ),
-        'body'      => __( "What you flagged, {ticked}, is worth showing to a doctor or a pharmacist rather than working through with us. It can be looked at properly, and the things that help are mostly not skincare. We've stopped the rest of your results here on purpose. Anything we said about routines would be beside the point, and we'd rather say less than send you off in the wrong direction.", 'apotheca-skin-quiz' ),
+        'body'      => __( "What you flagged, {ticked}, is worth showing to a doctor or a pharmacist rather than working through with us. It can be looked at properly, and the things that help are mostly not skincare. We've stopped the rest of your results here on purpose. Anything we might say about routines wouldn't help you here, and we'd rather say less than point you the wrong way.", 'apotheca-skin-quiz' ),
         'email_ack'       => __( "Thanks for taking the quiz. Based on one of your answers, we'd gently suggest showing that to a doctor or a pharmacist rather than working through it with us. We haven't put together your results this time, on purpose, and we'd rather say less than point you in the wrong direction.", 'apotheca-skin-quiz' ),
         'read_next_intro' => __( "If it's useful, here's what's worth reading in the meantime.", 'apotheca-skin-quiz' ),
     ),
@@ -81,7 +82,7 @@ return array(
         // F1 ── Dehydration, not dryness.
         'F1' => array(
             'describing'   => __( "Moisturiser helps for an hour or two and then the dullness is back. That's the signature of skin that's short of {em}water{/em} rather than short of oil, and the two want different things.", 'apotheca-skin-quiz' ),
-            'probably_not' => __( "This usually isn't dryness in the sense of needing a heavier cream, though that's the reflex. Dry skin is short of oil. What you're describing sounds more like water leaving faster than it should, which is why a richer cream can feel greasy on top and still rough underneath.", 'apotheca-skin-quiz' ),
+            'probably_not' => __( "This usually isn't dryness, the sort a heavier moisturiser fixes, even though that's the first thing most of us reach for. Dry skin is short of oil. What you're describing sounds more like water escaping faster than it should, which is why a richer moisturiser can sit greasy on top and still feel rough underneath.", 'apotheca-skin-quiz' ),
             'worth_trying' => array( 'key' => 'water_then_seal', 'text' => __( "The useful move here usually isn't heavier, it's getting water into the skin and then keeping it there. Look at whether anything in your routine is doing that first job at all, before you reach for something richer.", 'apotheca-skin-quiz' ) ),
         ),
 
@@ -94,7 +95,7 @@ return array(
 
         // F6 ── Hormonal shift pattern. Brand voice may name the life stage.
         'F6' => array(
-            'describing'   => __( "Some of what you've told us fits a pattern of change rather than anything you've done. Skin that was reliably oily and quietly stopped being oily, or that shifted fairly suddenly from your 40s on, is one of the more recognisable signs of perimenopause and menopause, and it tends to arrive without much warning.", 'apotheca-skin-quiz' ),
+            'describing'   => __( "Some of what you've told us fits a pattern of change rather than anything you've done. Skin getting drier, a little less firm, or breaking out along the jaw when it never used to, often more than one of those at once from your late 30s or 40s on, is one of the more recognisable signs of perimenopause and menopause. It tends to arrive without much warning, and it isn't something you've brought on.", 'apotheca-skin-quiz' ),
             'probably_not' => __( "This isn't a sign you've started doing something wrong. It's more often that a routine built for the skin you had is quietly no longer the routine for the skin you've got.", 'apotheca-skin-quiz' ),
             'worth_trying' => array( 'key' => 'question_routine', 'text' => __( "Look at what your current products are for, rather than what they cost. Anything chosen years ago to control oil or to mattify is worth questioning first.", 'apotheca-skin-quiz' ) ),
         ),
@@ -125,14 +126,14 @@ return array(
         // doesn't reliably reseal with a moisturiser. Distinct action from F5.
         'F13' => array(
             'describing'   => __( "You told us your skin feels {al:Q2} after cleansing, and that a moisturiser doesn't always go straight back on. That's worth pausing on, because {em}the step that's missing is the one that seals everything in{/em}. Bare skin loses water faster than most people expect, so cleansing or treating and then leaving it is often what's behind that tight, thin feeling.", 'apotheca-skin-quiz' ),
-            'probably_not' => __( "This usually isn't skin that needs a stronger treatment or a richer cream. It's more often skin that's being cleansed or worked on and then left to fend for itself, so the good you're doing quietly leaks back out.", 'apotheca-skin-quiz' ),
+            'probably_not' => __( "This usually isn't skin that needs a stronger treatment or a richer moisturiser. It's more often skin that's being cleansed or worked on and then left to fend for itself, so the good you're doing quietly leaks back out.", 'apotheca-skin-quiz' ),
             'worth_trying' => array( 'key' => 'reseal', 'text' => __( "For the next couple of weeks, treat moisturiser as the step you don't skip, not the optional one. Put it on within a minute or two of cleansing, while your skin's still a little damp, and see whether that tightness eases on its own.", 'apotheca-skin-quiz' ) ),
         ),
 
         // F14 ── Photoprotection gap. A daily-use gap plus a visible signal. Kept
         // advisory: about habit and consistency, never alarm, never medical.
         'F14' => array(
-            'describing'   => __( "You told us you wear sunscreen {al:Q8}, and that redness or marks that linger are something you notice. Everyday light adds up more than it feels like it should, through cloud and through glass as much as on a bright day, and {em}it's one of the few things that reliably shifts lingering marks and redness{/em}. This isn't about a day at the beach, it's the ordinary light most days quietly bring.", 'apotheca-skin-quiz' ),
+            'describing'   => __( "You told us you wear sunscreen {al:Q8}, and that redness or marks that linger are something you notice. Everyday light adds up more than it feels like it should, through cloud and through glass as much as on a bright day, and {em}protecting from it is one of the few things that reliably shifts lingering marks and redness{/em}. This isn't about a day at the beach, it's the ordinary daylight that builds up without you noticing.", 'apotheca-skin-quiz' ),
             'probably_not' => __( "Reaching for something to fade the marks or calm the redness is the usual next move, and it tends to work against a tide that's still coming in. Protecting from the light first is what lets everything else you do actually hold.", 'apotheca-skin-quiz' ),
             'worth_trying' => array( 'key' => 'daily_spf', 'text' => __( "The single most useful change here is a broad-spectrum sunscreen worn on a normal day, not just a sunny one. Worn daily, it does more for tone and comfort over time than almost anything you'd layer on top.", 'apotheca-skin-quiz' ) ),
         ),
@@ -146,7 +147,7 @@ return array(
         // F8 ── Reading list only. Leans on the read-next block.
         'F8' => array(
             'describing'   => __( "You've told us this has never quite settled, and nothing in your answers points to one clear thing to change. That isn't a dead end. Sometimes the most useful next step is to read a little, rather than to buy something or swap everything at once.", 'apotheca-skin-quiz' ),
-            'worth_trying' => array( 'key' => 'read_first', 'text' => __( "Before you change anything, have a read of what's below. It's a better use of the next ten minutes than another purchase.", 'apotheca-skin-quiz' ) ),
+            'worth_trying' => array( 'key' => 'read_first', 'text' => __( "Before you change anything, have a read of what's below. It's a better use of the next 10 minutes than another purchase.", 'apotheca-skin-quiz' ) ),
         ),
 
     ),
