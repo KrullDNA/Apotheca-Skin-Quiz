@@ -89,7 +89,7 @@ return array(
             'multiple' => false,
             'answers'  => array(
                 array( 'key' => 'A', 'text' => __( "Something has changed and I don't know why", 'apotheca-skin-quiz' ), 'findings' => array( 'F6', 'F9' ) ),
-                array( 'key' => 'B', 'text' => __( "It's never really settled", 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'B', 'text' => __( "My skin's never had a calm baseline", 'apotheca-skin-quiz' ), 'findings' => array() ),
                 array( 'key' => 'C', 'text' => __( "I'm using a lot of things and I'm not sure any of it is working", 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
                 array( 'key' => 'D', 'text' => __( 'Everything stings lately', 'apotheca-skin-quiz' ), 'findings' => array( 'F5' ) ),
             ),
