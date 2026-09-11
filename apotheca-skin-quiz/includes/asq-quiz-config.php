@@ -294,7 +294,7 @@ return array(
         // Q10 ── Age range. Skippable, with the reason given in the question.
         array(
             'id'       => 'Q10',
-            'text'     => __( 'Which age range are you in?', 'apotheca-skin-quiz' ),
+            'text'     => __( 'What is your age group?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'optional' => true,
             'answers'  => array(
