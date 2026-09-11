@@ -147,7 +147,7 @@ return array(
         // F8 ── Reading list only. Leans on the read-next block.
         'F8' => array(
             'describing'   => __( "You've told us this has never quite settled, and nothing in your answers points to one clear thing to change. That isn't a dead end. Sometimes the most useful next step is to read a little, rather than to buy something or swap everything at once.", 'apotheca-skin-quiz' ),
-            'worth_trying' => array( 'key' => 'read_first', 'text' => __( "Before you change anything, have a read of what's below. It's a better use of the next 10 minutes than another purchase.", 'apotheca-skin-quiz' ) ),
+            'worth_trying' => array( 'key' => 'read_first', 'text' => __( "Before you change anything, have a read of what's below. It's usually a better use of your time than another purchase.", 'apotheca-skin-quiz' ) ),
         ),
 
     ),
