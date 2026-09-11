@@ -121,6 +121,22 @@ return array(
             'worth_trying' => array( 'key' => 'decode_products', 'text' => __( "The simplest next step is to find out what you're actually using. {decoder}Paste your products into our Ingredient List Decoder{/decoder} and it'll tell you what's in there, in plain English.", 'apotheca-skin-quiz' ) ),
         ),
 
+        // F13 ── Barrier under-supported. She cleanses to a tight feeling and
+        // doesn't reliably reseal with a moisturiser. Distinct action from F5.
+        'F13' => array(
+            'describing'   => __( "You told us your skin feels {al:Q2} after cleansing, and that a moisturiser doesn't always go straight back on. That's worth pausing on, because {em}the step that's missing is the one that seals everything in{/em}. Bare skin loses water faster than most people expect, so cleansing or treating and then leaving it is often what's behind that tight, thin feeling.", 'apotheca-skin-quiz' ),
+            'probably_not' => __( "This usually isn't skin that needs a stronger treatment or a richer cream. It's more often skin that's being cleansed or worked on and then left to fend for itself, so the good you're doing quietly leaks back out.", 'apotheca-skin-quiz' ),
+            'worth_trying' => array( 'key' => 'reseal', 'text' => __( "For the next couple of weeks, treat moisturiser as the step you don't skip, not the optional one. Put it on within a minute or two of cleansing, while your skin's still a little damp, and see whether that tightness eases on its own.", 'apotheca-skin-quiz' ) ),
+        ),
+
+        // F14 ── Photoprotection gap. A daily-use gap plus a visible signal. Kept
+        // advisory: about habit and consistency, never alarm, never medical.
+        'F14' => array(
+            'describing'   => __( "You told us you wear sunscreen {al:Q8}, and that redness or marks that linger are something you notice. Everyday light adds up more than it feels like it should, through cloud and through glass as much as on a bright day, and {em}it's one of the few things that reliably shifts lingering marks and redness{/em}. This isn't about a day at the beach, it's the ordinary light most days quietly bring.", 'apotheca-skin-quiz' ),
+            'probably_not' => __( "Reaching for something to fade the marks or calm the redness is the usual next move, and it tends to work against a tide that's still coming in. Protecting from the light first is what lets everything else you do actually hold.", 'apotheca-skin-quiz' ),
+            'worth_trying' => array( 'key' => 'daily_spf', 'text' => __( "The single most useful change here is a broad-spectrum sunscreen worn on a normal day, not just a sunny one. Worn daily, it does more for tone and comfort over time than almost anything you'd layer on top.", 'apotheca-skin-quiz' ) ),
+        ),
+
         // F10 ── Nothing obviously wrong. Deliberately short.
         'F10' => array(
             'describing'   => __( "Here's the honest version: nothing you've told us points to a clear problem. Your answers describe skin that's behaving, more or less, and a routine that isn't fighting it.", 'apotheca-skin-quiz' ),

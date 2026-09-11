@@ -46,10 +46,10 @@ class ASQ_Engine {
      *               [ 'id' => 'F5', 'label' => '…', 'triggers' => [
      *                   [ 'qid' => 'Q6', 'question' => '…', 'answer' => '…' ], … ] ]
      */
-    public static function evaluate( $answers ) {
+    public static function evaluate( $answers, $followups = array() ) {
         $rules    = self::rules();
         $findings = isset( $rules['findings'] ) ? $rules['findings'] : array();
-        $selected = ASQ_Config::selected_keys( (array) $answers );
+        $selected = ASQ_Config::selected_keys( (array) $answers, (array) $followups );
 
         self::$suppressed = array(); // reset for this evaluation
 
@@ -177,13 +177,13 @@ class ASQ_Engine {
      * True if the answer set trips the medical gate. Used server-side to
      * enforce the data rule regardless of what the browser does.
      */
-    public static function is_gate( $answers ) {
+    public static function is_gate( $answers, $followups = array() ) {
         $rules   = self::rules();
         $gate_id = isset( $rules['gate'] ) ? $rules['gate'] : '';
         if ( ! $gate_id || empty( $rules['findings'][ $gate_id ]['fires_when'] ) ) {
             return false;
         }
-        $selected = ASQ_Config::selected_keys( (array) $answers );
+        $selected = ASQ_Config::selected_keys( (array) $answers, (array) $followups );
         return null !== self::first_matching_clause( $rules['findings'][ $gate_id ]['fires_when'], $selected );
     }
 

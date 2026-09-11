@@ -118,8 +118,9 @@ class ASQ_Ajax {
         // Whether read-next links open in a new tab (Elementor content control).
         $rn_new_tab = ! empty( $_POST['rn_new_tab'] );
 
-        // Run the findings engine.
-        $findings = ASQ_Engine::evaluate( (array) $answers );
+        // Run the findings engine. Follow-up (branch) answers are passed in too,
+        // so a branch answer genuinely fires a finding.
+        $findings = ASQ_Engine::evaluate( (array) $answers, (array) $followup_answers );
         $is_gate  = ( 1 === count( $findings ) && isset( $findings[0]['id'] ) && 'F11' === $findings[0]['id'] );
 
         // The medical gate replaces the reading. It may offer at most one
@@ -128,7 +129,7 @@ class ASQ_Ajax {
         // separately so the screen can lay it out below the reading.
         if ( $is_gate ) {
             $articles = ASQ_Read_Next::for_gate( $source_id );
-            $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab );
+            $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab, (array) $followup_answers );
             wp_send_json_success( array(
                 'is_gate'              => true,
                 'reading_html'         => $split['html'],
@@ -142,7 +143,7 @@ class ASQ_Ajax {
         // true, so their articles can still appear.
         $rn_findings = ASQ_Engine::read_next_findings( $findings );
         $articles    = ASQ_Read_Next::for_findings( $rn_findings, $source_id );
-        $split       = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab );
+        $split       = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab, (array) $followup_answers );
 
         wp_send_json_success( array(
             'is_gate'              => false,

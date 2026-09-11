@@ -209,14 +209,16 @@ class ASQ_Presenter {
      * @return array Either a gate reading ( is_gate => true, heading, body )
      *               or a normal reading ( is_gate => false, sections => [...] ).
      */
-    public static function build_reading( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false ) {
+    public static function build_reading( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false, $followups = array() ) {
         // Set for this render; resolve() reads it when it meets a {decoder} token.
         self::$decoder_url = is_string( $decoder_url ) ? $decoder_url : '';
         self::$rn_new_tab  = (bool) $rn_new_tab;
         self::$gate_ticked = ''; // populated only for a gate reading, below
 
         $p    = self::phrasing();
-        $amap = self::answer_map( $answers );
+        // Follow-up (branch) answers are merged in too, so a reflect-back token
+        // like {al:Q8} can quote a branch answer, not just a main one.
+        $amap = self::answer_map( $answers, $followups );
 
         // The medical gate replaces the whole reading. Name back exactly what
         // she flagged, via the {ticked} token, so she isn't left guessing.
@@ -289,8 +291,8 @@ class ASQ_Presenter {
     /**
      * Build and render the reading to HTML in one step.
      */
-    public static function render( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false ) {
-        return self::render_html( self::build_reading( $findings, $answers, $articles, $decoder_url, $rn_new_tab ) );
+    public static function render( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false, $followups = array() ) {
+        return self::render_html( self::build_reading( $findings, $answers, $articles, $decoder_url, $rn_new_tab, $followups ) );
     }
 
     /**
@@ -332,8 +334,8 @@ class ASQ_Presenter {
      * @return array is_gate => bool; for a gate: html + readnext; otherwise
      *               intro, rest and readnext.
      */
-    public static function render_split( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false ) {
-        $reading = self::build_reading( $findings, $answers, $articles, $decoder_url, $rn_new_tab );
+    public static function render_split( $findings, $answers, $articles = array(), $decoder_url = '', $rn_new_tab = false, $followups = array() ) {
+        $reading = self::build_reading( $findings, $answers, $articles, $decoder_url, $rn_new_tab, $followups );
         $p       = self::phrasing();
 
         // The medical gate: the calm box, and its read-next separately.
@@ -438,9 +440,9 @@ class ASQ_Presenter {
      * Map each answered question id to her answer text (comma-joined if she
      * picked more than one), for weaving into the copy.
      */
-    protected static function answer_map( $answers ) {
+    protected static function answer_map( $answers, $followups = array() ) {
         $map = array();
-        foreach ( ASQ_Config::selected_keys( (array) $answers ) as $qid => $keys ) {
+        foreach ( ASQ_Config::selected_keys( (array) $answers, (array) $followups ) as $qid => $keys ) {
             $texts = array();
             foreach ( (array) $keys as $key ) {
                 // Woven into prose, so strip any styling HTML the option text

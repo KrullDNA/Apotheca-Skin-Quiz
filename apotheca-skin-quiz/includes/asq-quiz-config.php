@@ -1,32 +1,47 @@
 <?php
 /**
- * Apotheca Skin Quiz, single source of truth.
+ * Apotheca Skin Quiz, single source of truth (v2.0.0, adaptive).
  *
- * The ten questions, their options and the findings each option contributes
- * to all live here, in one place, so the whole set can be edited without
- * touching any flow logic. This is section 4 of the project brief.
+ * The questions, their options, the follow-up questions some options open, and
+ * the findings each answer contributes to all live here, in one place, so the
+ * whole set can be edited without touching any flow logic.
  *
  * Structure:
- *   findings   id => human label (section 5 of the brief)
+ *   findings   id => human label
  *   questions  ordered list; each question has:
- *                id          short code (Q1..Q10), for the engine and admin
+ *                id          short code (Q1..Q11), for the engine and admin
  *                text        the question shown to her
  *                instruction optional helper line under the question
- *                multiple    true for a multi-select question (Q5, Q10)
- *                optional    true if she may decline to answer (Q9)
+ *                multiple    true for a multi-select question
+ *                optional    true if she may decline to answer
  *                answers     ordered list; each answer has:
- *                              key       A, B, C ... (for the engine)
- *                              text      the option shown to her
- *                              findings  which findings this option feeds
- *                              note      optional supporting line under the option
- *                              safe      true for a "none of these" style option
+ *                              key        A, B, C ... (for the engine)
+ *                              text       the option shown to her
+ *                              findings   which findings this option feeds
+ *                              note       optional supporting line under the option
+ *                              safe       true for a "none of these" gate option
+ *                              skip       true for a "rather not say" option
+ *                              follow_up  optional. A conditional question shown
+ *                                         only when this option is chosen. It has
+ *                                         its own id (e.g. Q2a), text, optional
+ *                                         instruction, multiple flag and answers.
+ *                                         Its answers carry keys and findings just
+ *                                         like a main question, so a branch answer
+ *                                         genuinely fires findings, it is not
+ *                                         cosmetic. Follow-up ids never collide
+ *                                         with the main Qn ids.
  *
- * The order of questions and answers here IS the order shown on screen, and
- * the engine and the placeholder result map answers back by that same order.
+ * The order of questions and answers here IS the order shown on screen, and the
+ * engine maps answers back by that same order. A follow-up answer only counts
+ * when its parent option is actually selected, so a changed mind can never leave
+ * a stale branch answer influencing the result.
  *
- * Finding firing rules, priority and suppression are NOT here; they are the
- * job of the findings engine in a later stage. This file only records which
- * findings each answer contributes to (the arrows in section 4 of the brief).
+ * Finding firing rules, priority and suppression are NOT here; they are the job
+ * of the findings engine in asq-findings-rules.php. This file only records which
+ * findings each answer contributes to.
+ *
+ * Brand voice: plain words, contractions, UK English, no em dashes, no condition
+ * ever named to her, no product ever recommended.
  *
  * @package ApothecaSkinQuiz
  */
@@ -39,7 +54,7 @@ return array(
 
     'findings' => array(
         'F1'  => __( 'Dehydration, not dryness', 'apotheca-skin-quiz' ),
-        'F2'  => __( 'The cleanser is the problem', 'apotheca-skin-quiz' ),
+        'F2'  => __( 'The cleanser is doing too much', 'apotheca-skin-quiz' ),
         'F3'  => __( 'Over-exfoliation', 'apotheca-skin-quiz' ),
         'F4'  => __( 'Too many actives at once', 'apotheca-skin-quiz' ),
         'F5'  => __( 'Barrier disruption', 'apotheca-skin-quiz' ),
@@ -50,31 +65,34 @@ return array(
         'F10' => __( 'Nothing obviously wrong', 'apotheca-skin-quiz' ),
         'F11' => __( 'Medical referral', 'apotheca-skin-quiz' ),
         'F12' => __( "Not sure what's in her products", 'apotheca-skin-quiz' ),
+        'F13' => __( 'Barrier under-supported', 'apotheca-skin-quiz' ),
+        'F14' => __( 'Photoprotection gap', 'apotheca-skin-quiz' ),
     ),
 
-    // Read-next mapping: each finding points at one or two Skin Topic terms,
-    // by slug, on the shared taxonomy the Ingredient List Decoder registers.
-    // The read-next block queries published posts carrying these terms.
+    // Read-next mapping: each finding points at one or two Skin Topic terms, by
+    // slug, on the shared taxonomy the Ingredient List Decoder registers. The
+    // read-next block queries published posts carrying these terms.
     //
-    // These slugs must match the Skin Topic terms on the site. The decoder
-    // seeds these ten by default, so their slugs are:
+    // The decoder seeds these ten by default, so their slugs are:
     //   pigmentation, firmness-and-collagen, barrier-and-sensitivity,
     //   hydration, texture-and-pores, congestion, perimenopause-and-skin,
     //   ageing-and-cell-turnover, formulation-and-use-levels,
     //   clean-and-natural-origin
     // Edit the mapping here if you rename a term or add your own.
     'finding_topics' => array(
-        'F1' => array( 'hydration' ),
-        'F2' => array( 'barrier-and-sensitivity' ),
-        'F3' => array( 'barrier-and-sensitivity', 'texture-and-pores' ),
-        'F4' => array( 'formulation-and-use-levels', 'barrier-and-sensitivity' ),
-        'F5' => array( 'barrier-and-sensitivity' ),
-        'F6' => array( 'perimenopause-and-skin', 'ageing-and-cell-turnover' ),
-        'F7' => array( 'congestion', 'hydration' ),
-        'F8' => array( 'formulation-and-use-levels', 'clean-and-natural-origin' ),
-        'F9' => array( 'hydration', 'barrier-and-sensitivity' ),
+        'F1'  => array( 'hydration' ),
+        'F2'  => array( 'barrier-and-sensitivity' ),
+        'F3'  => array( 'barrier-and-sensitivity', 'texture-and-pores' ),
+        'F4'  => array( 'formulation-and-use-levels', 'barrier-and-sensitivity' ),
+        'F5'  => array( 'barrier-and-sensitivity' ),
+        'F6'  => array( 'perimenopause-and-skin', 'ageing-and-cell-turnover' ),
+        'F7'  => array( 'congestion', 'hydration' ),
+        'F8'  => array( 'formulation-and-use-levels', 'clean-and-natural-origin' ),
+        'F9'  => array( 'hydration', 'barrier-and-sensitivity' ),
         'F10' => array( 'ageing-and-cell-turnover' ),
         'F12' => array( 'formulation-and-use-levels' ),
+        'F13' => array( 'barrier-and-sensitivity', 'hydration' ),
+        'F14' => array( 'pigmentation', 'ageing-and-cell-turnover' ),
     ),
 
     // The gate offers at most one general, non-specific article. One term.
@@ -88,20 +106,36 @@ return array(
             'text'     => __( 'What brought you here today?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'answers'  => array(
-                array( 'key' => 'A', 'text' => __( "Something has changed and I don't know why", 'apotheca-skin-quiz' ), 'findings' => array( 'F6', 'F9' ) ),
-                array( 'key' => 'B', 'text' => __( "My skin's never had a calm baseline", 'apotheca-skin-quiz' ), 'findings' => array() ),
-                array( 'key' => 'C', 'text' => __( "I'm using a lot of things and I'm not sure any of it is working", 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
+                array( 'key' => 'A', 'text' => __( "Something's changed and I'm not sure why", 'apotheca-skin-quiz' ), 'findings' => array( 'F6', 'F9' ) ),
+                array( 'key' => 'B', 'text' => __( "My skin's never really had a calm baseline", 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'C', 'text' => __( "I'm using a lot of things and I'm not seeing much for it", 'apotheca-skin-quiz' ), 'findings' => array( 'F4' ) ),
                 array( 'key' => 'D', 'text' => __( 'Everything stings lately', 'apotheca-skin-quiz' ), 'findings' => array( 'F5' ) ),
             ),
         ),
 
-        // Q2 ── Tightness after cleansing.
+        // Q2 ── Tightness after cleansing. Option A opens a follow-up about
+        // whether she reseals with a moisturiser, which is what actually fires
+        // the barrier-under-supported finding (F13).
         array(
             'id'       => 'Q2',
             'text'     => __( 'How does your skin feel twenty minutes after you cleanse, before you put anything on?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'answers'  => array(
-                array( 'key' => 'A', 'text' => __( 'Tight, like it needs something urgently', 'apotheca-skin-quiz' ), 'findings' => array( 'F2', 'F5' ) ),
+                array(
+                    'key'       => 'A',
+                    'text'      => __( 'Tight, like it needs something urgently', 'apotheca-skin-quiz' ),
+                    'findings'  => array( 'F2', 'F5' ),
+                    'follow_up' => array(
+                        'id'       => 'Q2a',
+                        'text'     => __( 'When it feels like that, do you put a moisturiser on fairly soon after?', 'apotheca-skin-quiz' ),
+                        'multiple' => false,
+                        'answers'  => array(
+                            array( 'key' => 'A', 'text' => __( 'Yes, pretty much always', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                            array( 'key' => 'B', 'text' => __( 'Only sometimes', 'apotheca-skin-quiz' ), 'findings' => array( 'F13' ) ),
+                            array( 'key' => 'C', 'text' => __( 'Not really, I tend to leave it a while', 'apotheca-skin-quiz' ), 'findings' => array( 'F13' ) ),
+                        ),
+                    ),
+                ),
                 array( 'key' => 'B', 'text' => __( 'Comfortable', 'apotheca-skin-quiz' ), 'findings' => array() ),
                 array( 'key' => 'C', 'text' => __( 'Already oily again', 'apotheca-skin-quiz' ), 'findings' => array( 'F7' ) ),
                 array( 'key' => 'D', 'text' => __( 'Tight in some places, oily in others', 'apotheca-skin-quiz' ), 'findings' => array( 'F1', 'F2' ) ),
@@ -117,29 +151,25 @@ return array(
                 array( 'key' => 'A', 'text' => __( "It helps for an hour or two, then it's back", 'apotheca-skin-quiz' ), 'findings' => array( 'F1' ) ),
                 array( 'key' => 'B', 'text' => __( 'Yes, that sorts it', 'apotheca-skin-quiz' ), 'findings' => array() ),
                 array( 'key' => 'C', 'text' => __( 'Moisturiser makes it feel greasy but still rough underneath', 'apotheca-skin-quiz' ), 'findings' => array( 'F1' ) ),
-                array( 'key' => 'D', 'text' => __( "I don't really get this", 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'D', 'text' => __( "I don't really notice this", 'apotheca-skin-quiz' ), 'findings' => array() ),
             ),
         ),
 
         // Q4 ── Exfoliation, in any form.
         array(
-            'id'          => 'Q4',
-            'text'        => __( 'How often do you exfoliate, in any form? Acids, scrubs, cleansing devices, peels.', 'apotheca-skin-quiz' ),
-            'multiple'    => false,
-            'answers'     => array(
+            'id'       => 'Q4',
+            'text'     => __( 'How often do you exfoliate, in any form? Acids, scrubs, cleansing devices, peels.', 'apotheca-skin-quiz' ),
+            'multiple' => false,
+            'answers'  => array(
                 array( 'key' => 'A', 'text' => __( 'Most days', 'apotheca-skin-quiz' ), 'findings' => array( 'F3' ) ),
                 array( 'key' => 'B', 'text' => __( 'Two or three times a week', 'apotheca-skin-quiz' ), 'findings' => array() ),
                 array( 'key' => 'C', 'text' => __( 'Once a week or less', 'apotheca-skin-quiz' ), 'findings' => array() ),
-                // Uncertainty about exfoliation is its own finding now (F12),
-                // not evidence of over-exfoliation or too many actives.
                 array( 'key' => 'D', 'text' => __( "I'm not sure whether some of my products count", 'apotheca-skin-quiz' ), 'findings' => array( 'F12' ) ),
             ),
         ),
 
         // Q5 ── What she's using now. Multi-select. Option A is deliberately
-        // loose, because many people don't know the term for what they use, so
-        // it must not be tightened. Option E (not sure) is a real answer, not a
-        // non-answer, and feeds its own finding (F12).
+        // loose; option E (not sure) is a real answer and feeds F12.
         array(
             'id'          => 'Q5',
             'text'        => __( 'Which of these are you using at the moment?', 'apotheca-skin-quiz' ),
@@ -166,7 +196,9 @@ return array(
             ),
         ),
 
-        // Q7 ── Oiliness, including the quiet hormonal answer.
+        // Q7 ── Oiliness, including the quiet hormonal answer. Option D opens a
+        // gentle follow-up that, together, fires the hormonal-shift finding (F6),
+        // so a drop in oil on its own isn't read as hormonal without corroboration.
         array(
             'id'       => 'Q7',
             'text'     => __( 'Where does your skin sit on oiliness?', 'apotheca-skin-quiz' ),
@@ -175,14 +207,75 @@ return array(
                 array( 'key' => 'A', 'text' => __( 'Oily across most of my face', 'apotheca-skin-quiz' ), 'findings' => array( 'F7' ) ),
                 array( 'key' => 'B', 'text' => __( 'Oily through the middle, drier at the edges', 'apotheca-skin-quiz' ), 'findings' => array() ),
                 array( 'key' => 'C', 'text' => __( 'Rarely oily anywhere', 'apotheca-skin-quiz' ), 'findings' => array() ),
-                array( 'key' => 'D', 'text' => __( "It used to be oily and it isn't any more", 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                array(
+                    'key'       => 'D',
+                    'text'      => __( "It used to be oily and it isn't any more", 'apotheca-skin-quiz' ),
+                    'findings'  => array( 'F6' ),
+                    'follow_up' => array(
+                        'id'       => 'Q7a',
+                        'text'     => __( 'Has anything else shifted around the same time?', 'apotheca-skin-quiz' ),
+                        'instruction' => __( 'Things like more dryness, less bounce or firmness, or the odd breakout along your jaw.', 'apotheca-skin-quiz' ),
+                        'multiple' => false,
+                        'answers'  => array(
+                            array( 'key' => 'A', 'text' => __( 'Yes, that sounds about right', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                            array( 'key' => 'B', 'text' => __( 'Maybe one of those', 'apotheca-skin-quiz' ), 'findings' => array( 'F6' ) ),
+                            array( 'key' => 'C', 'text' => __( 'No, just the oil', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                        ),
+                    ),
+                ),
             ),
         ),
 
-        // Q8 ── Change over the last two years.
+        // Q8 ── Everyday sunscreen. Option C or D (a daily-use gap) opens a
+        // follow-up about a visible signal. The photoprotection finding (F14)
+        // fires only when there is both a gap and a signal, so it stays advisory
+        // and never reads as alarm.
         array(
             'id'       => 'Q8',
-            'text'     => __( 'Has any of this changed in the last two years?', 'apotheca-skin-quiz' ),
+            'text'     => __( 'On a normal day, do you wear sunscreen on your face?', 'apotheca-skin-quiz' ),
+            'multiple' => false,
+            'answers'  => array(
+                array( 'key' => 'A', 'text' => __( 'Yes, every day', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array( 'key' => 'B', 'text' => __( 'Most days', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                array(
+                    'key'       => 'C',
+                    'text'      => __( "Only when it's sunny or hot", 'apotheca-skin-quiz' ),
+                    'findings'  => array(),
+                    'follow_up' => array(
+                        'id'       => 'Q8a',
+                        'text'     => __( 'Do you notice any of this on your skin?', 'apotheca-skin-quiz' ),
+                        'instruction' => __( 'Redness, or marks and patches that linger, especially after time outside or later in the day.', 'apotheca-skin-quiz' ),
+                        'multiple' => false,
+                        'answers'  => array(
+                            array( 'key' => 'A', 'text' => __( 'Yes, fairly often', 'apotheca-skin-quiz' ), 'findings' => array( 'F14' ) ),
+                            array( 'key' => 'B', 'text' => __( 'Sometimes', 'apotheca-skin-quiz' ), 'findings' => array( 'F14' ) ),
+                            array( 'key' => 'C', 'text' => __( 'Not really', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                        ),
+                    ),
+                ),
+                array(
+                    'key'       => 'D',
+                    'text'      => __( 'Rarely or never', 'apotheca-skin-quiz' ),
+                    'findings'  => array(),
+                    'follow_up' => array(
+                        'id'       => 'Q8a',
+                        'text'     => __( 'Do you notice any of this on your skin?', 'apotheca-skin-quiz' ),
+                        'instruction' => __( 'Redness, or marks and patches that linger, especially after time outside or later in the day.', 'apotheca-skin-quiz' ),
+                        'multiple' => false,
+                        'answers'  => array(
+                            array( 'key' => 'A', 'text' => __( 'Yes, fairly often', 'apotheca-skin-quiz' ), 'findings' => array( 'F14' ) ),
+                            array( 'key' => 'B', 'text' => __( 'Sometimes', 'apotheca-skin-quiz' ), 'findings' => array( 'F14' ) ),
+                            array( 'key' => 'C', 'text' => __( 'Not really', 'apotheca-skin-quiz' ), 'findings' => array() ),
+                        ),
+                    ),
+                ),
+            ),
+        ),
+
+        // Q9 ── Change over the last couple of years.
+        array(
+            'id'       => 'Q9',
+            'text'     => __( 'Has any of this changed in the last couple of years?', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'answers'  => array(
                 array( 'key' => 'A', 'text' => __( 'Yes, fairly suddenly', 'apotheca-skin-quiz' ), 'findings' => array( 'F6', 'F9' ) ),
@@ -192,9 +285,9 @@ return array(
             ),
         ),
 
-        // Q9 ── Age range. Skippable, with the reason given in the question.
+        // Q10 ── Age range. Skippable, with the reason given in the question.
         array(
-            'id'       => 'Q9',
+            'id'       => 'Q10',
             'text'     => __( 'Which age range are you in? This changes what is most likely, and nothing else.', 'apotheca-skin-quiz' ),
             'multiple' => false,
             'optional' => true,
@@ -207,9 +300,9 @@ return array(
             ),
         ),
 
-        // Q10 ── The medical safety gate. Multi-select.
+        // Q11 ── The medical safety gate. Multi-select.
         array(
-            'id'          => 'Q10',
+            'id'          => 'Q11',
             'text'        => __( 'Is any of this happening?', 'apotheca-skin-quiz' ),
             'instruction' => __( 'Tick anything that applies.', 'apotheca-skin-quiz' ),
             'multiple'    => true,
