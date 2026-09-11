@@ -55,6 +55,13 @@ class ASQ_Presenter {
     const PINNED_TRIES = array( 'decode_products' );
 
     /**
+     * Worth-trying actions that only make sense when there are read-next articles
+     * to point at ("have a read of what's below"). With no articles, they are
+     * dropped rather than left referencing a section that isn't there.
+     */
+    const ARTICLE_DEPENDENT_TRIES = array( 'read_first' );
+
+    /**
      * The option holding editable result wording, overlaid on the code copy in
      * asq-phrasing.php. Only wording is stored; the tokens ({a:Qn}, {em}…{/em},
      * {decoder}…{/decoder}) live inside the wording and are preserved verbatim.
@@ -263,9 +270,10 @@ class ASQ_Presenter {
                 $probably[] = self::resolve( $copy['probably_not'], $amap );
             }
             if ( ! empty( $copy['worth_trying']['text'] ) ) {
-                $key    = isset( $copy['worth_trying']['key'] ) ? $copy['worth_trying']['key'] : $id;
-                $pinned = in_array( $key, self::PINNED_TRIES, true );
-                if ( ! isset( $seen_try[ $key ] ) && ( $pinned || count( $tries ) < self::MAX_TRIES ) ) {
+                $key            = isset( $copy['worth_trying']['key'] ) ? $copy['worth_trying']['key'] : $id;
+                $pinned         = in_array( $key, self::PINNED_TRIES, true );
+                $article_ok     = ! in_array( $key, self::ARTICLE_DEPENDENT_TRIES, true ) || ! empty( $articles );
+                if ( $article_ok && ! isset( $seen_try[ $key ] ) && ( $pinned || count( $tries ) < self::MAX_TRIES ) ) {
                     $seen_try[ $key ] = true;
                     $tries[]          = self::resolve( $copy['worth_trying']['text'], $amap );
                 }
