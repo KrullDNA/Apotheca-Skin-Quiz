@@ -1001,42 +1001,117 @@ class ASQ_Elementor_Widget extends Widget_Base {
 
     private function section_style_email_screen() {
         $this->start_controls_section( 'section_style_email', array(
-            'label' => __( 'Email Capture Screen', 'apotheca-skin-quiz' ),
+            'label' => __( 'Email Box', 'apotheca-skin-quiz' ),
             'tab'   => Controls_Manager::TAB_STYLE,
         ) );
 
+        // The box itself (the "email me a copy" panel at the end of the reading).
         $this->add_responsive_control( 'email_padding', array(
-            'label'      => __( 'Padding', 'apotheca-skin-quiz' ),
+            'label'      => __( 'Box Padding', 'apotheca-skin-quiz' ),
             'type'       => Controls_Manager::DIMENSIONS,
             'size_units' => array( 'px', 'em' ),
             'selectors'  => array(
-                '{{WRAPPER}} .asq-email-screen' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+                '{{WRAPPER}} .asq-emailcopy' => 'padding: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
             ),
         ) );
 
         $this->add_group_control( Group_Control_Background::get_type(), array(
             'name'     => 'email_background',
-            'selector' => '{{WRAPPER}} .asq-email-screen',
+            'selector' => '{{WRAPPER}} .asq-emailcopy',
         ) );
 
-        // Title
+        $this->add_group_control( Group_Control_Border::get_type(), array(
+            'name'     => 'email_border',
+            'selector' => '{{WRAPPER}} .asq-emailcopy',
+        ) );
+
+        $this->add_responsive_control( 'email_radius', array(
+            'label'      => __( 'Box Border Radius', 'apotheca-skin-quiz' ),
+            'type'       => Controls_Manager::DIMENSIONS,
+            'size_units' => array( 'px', '%' ),
+            'selectors'  => array(
+                '{{WRAPPER}} .asq-emailcopy' => 'border-radius: {{TOP}}{{UNIT}} {{RIGHT}}{{UNIT}} {{BOTTOM}}{{UNIT}} {{LEFT}}{{UNIT}};',
+            ),
+        ) );
+
+        // Heading ("Want your results by email?").
         $this->add_control( 'email_title_heading', array(
-            'label'     => __( 'Title', 'apotheca-skin-quiz' ),
+            'label'     => __( 'Heading', 'apotheca-skin-quiz' ),
             'type'      => Controls_Manager::HEADING,
             'separator' => 'before',
         ) );
 
         $this->add_control( 'email_title_color', array(
-            'label'     => __( 'Title Color', 'apotheca-skin-quiz' ),
+            'label'     => __( 'Heading Color', 'apotheca-skin-quiz' ),
             'type'      => Controls_Manager::COLOR,
             'selectors' => array(
-                '{{WRAPPER}} .asq-email-title' => 'color: {{VALUE}};',
+                '{{WRAPPER}} .asq-gate-lead' => 'color: {{VALUE}};',
             ),
         ) );
 
         $this->add_group_control( Group_Control_Typography::get_type(), array(
             'name'     => 'email_title_typography',
-            'selector' => '{{WRAPPER}} .asq-email-title',
+            'selector' => '{{WRAPPER}} .asq-gate-lead',
+        ) );
+
+        // Sub text ("If you'd like a copy by email, add your address here...").
+        $this->add_control( 'email_sub_heading', array(
+            'label'     => __( 'Sub Text', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'email_sub_color', array(
+            'label'     => __( 'Sub Text Color', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-emailcopy-sub' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'email_sub_typography',
+            'selector' => '{{WRAPPER}} .asq-emailcopy-sub',
+        ) );
+
+        // Consent line ("Yes, email me my result and send me...").
+        $this->add_control( 'email_consent_heading', array(
+            'label'     => __( 'Consent Text', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'email_consent_color', array(
+            'label'     => __( 'Consent Text Color', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-consent-label span' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'email_consent_typography',
+            'selector' => '{{WRAPPER}} .asq-consent-label span',
+        ) );
+
+        // Hint line ("Tick the box so we can send it.").
+        $this->add_control( 'email_hint_heading', array(
+            'label'     => __( 'Hint Text', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::HEADING,
+            'separator' => 'before',
+        ) );
+
+        $this->add_control( 'email_hint_color', array(
+            'label'     => __( 'Hint Text Color', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::COLOR,
+            'selectors' => array(
+                '{{WRAPPER}} .asq-consent-hint' => 'color: {{VALUE}};',
+            ),
+        ) );
+
+        $this->add_group_control( Group_Control_Typography::get_type(), array(
+            'name'     => 'email_hint_typography',
+            'selector' => '{{WRAPPER}} .asq-consent-hint',
         ) );
 
         // Input
@@ -2103,6 +2178,7 @@ class ASQ_Elementor_Widget extends Widget_Base {
                             <p class="asq-reading-p"><?php esc_html_e( 'A third sample paragraph.', 'apotheca-skin-quiz' ); ?></p>
                         </section>
                     </div>
+                    <div class="asq-readnext-jump-wrap"><button type="button" class="asq-btn asq-btn-secondary asq-readnext-jump"><?php esc_html_e( "See what's worth reading", 'apotheca-skin-quiz' ); ?></button></div>
                 </div>
                 <div class="asq-results-actions">
                     <button type="button" class="asq-btn asq-btn-secondary asq-start-over"><?php esc_html_e( 'Start over', 'apotheca-skin-quiz' ); ?></button>

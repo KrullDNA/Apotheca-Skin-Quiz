@@ -541,6 +541,12 @@ i.asq-loading-icon {
     margin-top: 32px;
 }
 
+/* Jump-to-read-next button, sits under the reading. Centred like Start over. */
+.asq-readnext-jump-wrap {
+    text-align: center;
+    margin-top: 24px;
+}
+
 /* Results grid */
 
 .asq-results-grid {
@@ -712,17 +718,23 @@ i.asq-loading-icon {
 
     .asq-nav-buttons {
         grid-template-columns: 1fr;
+        gap: 12px;
     }
-    .asq-nav-buttons > div {
-        justify-self: stretch;
+    /* Centre every button. These target the slot classes so they beat the
+       desktop start/center/end rules (same specificity, defined later). */
+    .asq-nav-buttons > .asq-nav-left,
+    .asq-nav-buttons > .asq-nav-center,
+    .asq-nav-buttons > .asq-nav-right {
+        justify-self: center;
     }
-    .asq-nav-buttons .asq-btn {
-        width: 100%;
+    /* Collapse empty slots so they add no gap when a button is absent. */
+    .asq-nav-buttons > div:empty {
+        display: none;
     }
-    /* Stack with Continue on top, Start again, then Back, like the old order. */
+    /* Stacked and centred: Continue on top, then Back, then Start again last. */
     .asq-nav-buttons > .asq-nav-right  { order: 1; }
-    .asq-nav-buttons > .asq-nav-center { order: 2; }
-    .asq-nav-buttons > .asq-nav-left   { order: 3; }
+    .asq-nav-buttons > .asq-nav-left   { order: 2; }
+    .asq-nav-buttons > .asq-nav-center { order: 3; }
 }
 
 /* === PF Add to Cart Widget === */
