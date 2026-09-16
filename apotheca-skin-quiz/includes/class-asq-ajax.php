@@ -142,8 +142,26 @@ class ASQ_Ajax {
         // draws on findings that were suppressed from the copy but are still
         // true, so their articles can still appear.
         $rn_findings = ASQ_Engine::read_next_findings( $findings );
-        $articles    = ASQ_Read_Next::for_findings( $rn_findings, $source_id );
-        $split       = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab, (array) $followup_answers );
+
+        // Read-next can render through a JetEngine Listing the owner set on the
+        // widget, so it matches their article grids. When a listing id is set we
+        // feed it exactly the posts read-next would show. If JetEngine is absent
+        // or the listing produces nothing, we fall back to the built-in cards.
+        $rn_listing_id   = absint( $_POST['rn_listing_id'] ?? 0 );
+        $rn_listing_cols = max( 1, absint( $_POST['rn_listing_columns'] ?? 3 ) );
+        $listing_html    = '';
+        if ( $rn_listing_id ) {
+            $post_ids     = ASQ_Read_Next::post_ids_for_findings( $rn_findings, $source_id );
+            $listing_html = ASQ_Read_Next::render_jet_listing( $rn_listing_id, $post_ids, $rn_listing_cols );
+        }
+
+        if ( '' !== $listing_html ) {
+            $split             = ASQ_Presenter::render_split( $findings, (array) $answers, array(), $decoder_url, $rn_new_tab, (array) $followup_answers );
+            $split['readnext'] = ASQ_Presenter::render_readnext_custom( $listing_html );
+        } else {
+            $articles = ASQ_Read_Next::for_findings( $rn_findings, $source_id );
+            $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab, (array) $followup_answers );
+        }
 
         wp_send_json_success( array(
             'is_gate'              => false,

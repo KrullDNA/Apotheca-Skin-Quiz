@@ -398,6 +398,30 @@ class ASQ_Presenter {
     }
 
     /**
+     * Wrap already-rendered read-next markup (e.g. a JetEngine Listing grid) in
+     * the same heading and intro line the built-in cards use, so listing mode
+     * and card mode read the same above the articles. The inner HTML is trusted
+     * (produced server-side by JetEngine), so it is not escaped again.
+     */
+    public static function render_readnext_custom( $inner_html ) {
+        $inner_html = is_string( $inner_html ) ? trim( $inner_html ) : '';
+        if ( '' === $inner_html ) {
+            return '';
+        }
+        $p     = self::phrasing();
+        $intro = isset( $p['read_next_intro'] ) ? $p['read_next_intro'] : '';
+
+        $html  = '<section class="asq-reading-section asq-reading-section--read_next">';
+        $html .= '<h3 class="asq-reading-heading">' . esc_html( self::texturize( $p['sections']['read_next'] ) ) . '</h3>';
+        if ( '' !== $intro ) {
+            $html .= '<p class="asq-reading-p asq-readnext-intro">' . esc_html( self::texturize( $intro ) ) . '</p>';
+        }
+        $html .= '<div class="asq-readnext-listing">' . $inner_html . '</div>';
+        $html .= '</section>';
+        return $html;
+    }
+
+    /**
      * Render one section (heading plus paragraphs, or the read-next cards).
      */
     protected static function render_section( $section ) {

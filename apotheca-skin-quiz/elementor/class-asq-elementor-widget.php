@@ -125,6 +125,32 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator'    => 'before',
         ) );
 
+        // Optional: render read-next through a JetEngine Listing so it matches
+        // the article grids elsewhere. Leave the id at 0 to use the built-in
+        // cards. In listing mode read-next shows blog posts only (any external
+        // links pinned on the Read-next articles screen won't appear), and it
+        // needs JetEngine active; if the listing renders nothing the built-in
+        // cards are used instead so the results screen never breaks.
+        $this->add_control( 'rn_listing_id', array(
+            'label'       => __( 'Read-next JetEngine Listing ID', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::NUMBER,
+            'min'         => 0,
+            'step'        => 1,
+            'default'     => 0,
+            'description' => __( 'The id of the JetEngine Listing to render the read-next articles with. Find it under JetEngine, Listing Items (the ID column, or the post= number in the edit URL). Leave 0 to use the built-in cards. If the grid looks unstyled, enable "Load JetEngine assets on all pages" in JetEngine settings, or place the same listing anywhere on this page.', 'apotheca-skin-quiz' ),
+            'separator'   => 'before',
+        ) );
+
+        $this->add_control( 'rn_listing_columns', array(
+            'label'     => __( 'Read-next Listing columns', 'apotheca-skin-quiz' ),
+            'type'      => Controls_Manager::NUMBER,
+            'min'       => 1,
+            'max'       => 6,
+            'step'      => 1,
+            'default'   => 3,
+            'condition' => array( 'rn_listing_id!' => array( '', '0', 0 ) ),
+        ) );
+
         $this->end_controls_section();
     }
 
@@ -2255,6 +2281,14 @@ class ASQ_Elementor_Widget extends Widget_Base {
 
         if ( ! empty( $settings['rn_new_tab'] ) && 'yes' === $settings['rn_new_tab'] ) {
             $shortcode_atts .= ' rn_new_tab="1"';
+        }
+
+        // Optional JetEngine Listing for read-next.
+        $rn_listing_id = absint( $settings['rn_listing_id'] ?? 0 );
+        if ( $rn_listing_id ) {
+            $shortcode_atts .= ' rn_listing_id="' . $rn_listing_id . '"';
+            $rn_listing_cols = max( 1, absint( $settings['rn_listing_columns'] ?? 3 ) );
+            $shortcode_atts .= ' rn_listing_columns="' . $rn_listing_cols . '"';
         }
 
         // Read DN labels from finder post meta instead of Elementor settings

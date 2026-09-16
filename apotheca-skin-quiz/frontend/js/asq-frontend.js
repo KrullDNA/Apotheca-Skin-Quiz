@@ -23,6 +23,8 @@
         this.options    = $el.data('options') || {};
         this.decoderUrl = $el.data('decoder-url') || '';  // F12 link target, per widget
         this.rnNewTab   = $el.data('rn-new-tab') ? 1 : 0; // read-next opens in a new tab
+        this.rnListingId   = parseInt($el.data('rn-listing-id'), 10) || 0;   // optional JetEngine Listing
+        this.rnListingCols = parseInt($el.data('rn-listing-columns'), 10) || 3;
         this.current    = 0;
         this.answers    = {};  // { questionIndex: [answerIndices] }
         this.followupAnswers = {};  // { "qi_ai": [followupAnswerIndices] }
@@ -792,6 +794,10 @@
                 nonce: asqFrontend.nonce,
                 finder_id: self.finderId,
                 source_id: asqFrontend.source_id,
+                decoder_url: self.decoderUrl,
+                rn_new_tab: self.rnNewTab,
+                rn_listing_id: self.rnListingId,
+                rn_listing_columns: self.rnListingCols,
                 answers: '{}',
                 followup_answers: '{}',
                 results_token: token
@@ -847,6 +853,8 @@
                 source_id: asqFrontend.source_id,
                 decoder_url: this.decoderUrl,
                 rn_new_tab: this.rnNewTab,
+                rn_listing_id: this.rnListingId,
+                rn_listing_columns: this.rnListingCols,
                 answers: JSON.stringify(this.answers),
                 followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {

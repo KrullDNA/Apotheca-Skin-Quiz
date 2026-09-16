@@ -212,9 +212,27 @@ class ASQ_Read_Next {
     }
 
     /**
-     * Query, rank and cap. Cached per finding-set until a post is saved.
+     * Query, rank and cap, returning up to $cap read-next cards.
      */
     public static function query( $slugs, $exclude_id, $cap ) {
+        $cards = array();
+        foreach ( self::ranked_ids( $slugs, $exclude_id, $cap ) as $id ) {
+            $cards[] = array(
+                'title'   => get_the_title( $id ),
+                'url'     => get_permalink( $id ),
+                'excerpt' => self::excerpt( $id ),
+                'thumb'   => get_the_post_thumbnail_url( $id, 'medium' ) ?: '',
+            );
+        }
+        return $cards;
+    }
+
+    /**
+     * Query, rank and cap, returning the ordered post ids. Cached per
+     * finding-set until a post is saved. This is the shared core used both by
+     * the built-in cards (query) and the JetEngine listing (post_ids_*).
+     */
+    public static function ranked_ids( $slugs, $exclude_id, $cap ) {
         $slugs = array_values( array_unique( array_filter( array_map( 'sanitize_title', (array) $slugs ) ) ) );
         if ( empty( $slugs ) ) {
             return array();
@@ -238,7 +256,7 @@ class ASQ_Read_Next {
         }
         sort( $existing );
 
-        $cache_key = 'asq_rn_' . self::cache_ver() . '_' . md5( $taxonomy . '|' . implode( ',', $existing ) . '|' . (int) $cap . '|' . (int) $exclude_id );
+        $cache_key = 'asq_rnid_' . self::cache_ver() . '_' . md5( $taxonomy . '|' . implode( ',', $existing ) . '|' . (int) $cap . '|' . (int) $exclude_id );
         $cached    = get_transient( $cache_key );
         if ( is_array( $cached ) ) {
             return $cached;
@@ -295,19 +313,105 @@ class ASQ_Read_Next {
             return $a['order'] <=> $b['order'];
         } );
 
-        $cards = array();
+        $out = array();
         foreach ( array_slice( $ranked, 0, $cap ) as $row ) {
-            $id    = $row['id'];
-            $cards[] = array(
-                'title'   => get_the_title( $id ),
-                'url'     => get_permalink( $id ),
-                'excerpt' => self::excerpt( $id ),
-                'thumb'   => get_the_post_thumbnail_url( $id, 'medium' ) ?: '',
-            );
+            $out[] = (int) $row['id'];
         }
 
-        set_transient( $cache_key, $cards, 12 * HOUR_IN_SECONDS );
-        return $cards;
+        set_transient( $cache_key, $out, 12 * HOUR_IN_SECONDS );
+        return $out;
+    }
+
+    /* ────────── JetEngine listing mode ────────── */
+
+    /**
+     * The ordered post ids the read-next would show for a set of findings, so a
+     * JetEngine Listing can render exactly those posts. Manual articles that are
+     * local posts are honoured first (external links can't feed a post listing);
+     * otherwise the topic-ranked posts are used.
+     *
+     * @param array $findings   Engine output (each with an 'id').
+     * @param int   $exclude_id Page id to exclude (the page the quiz is on).
+     * @param int   $cap        Max ids.
+     * @return int[] Ordered, unique post ids.
+     */
+    public static function post_ids_for_findings( $findings, $exclude_id = 0, $cap = self::CAP ) {
+        $cap  = max( 1, (int) $cap );
+        $ids  = array();
+        $seen = array();
+        $all  = self::articles();
+
+        foreach ( (array) $findings as $f ) {
+            $fid = isset( $f['id'] ) ? $f['id'] : '';
+            if ( '' === $fid || empty( $all[ $fid ] ) ) {
+                continue;
+            }
+            foreach ( (array) $all[ $fid ] as $row ) {
+                $url = isset( $row['url'] ) ? $row['url'] : '';
+                $pid = ( '' !== $url && function_exists( 'url_to_postid' ) ) ? (int) url_to_postid( $url ) : 0;
+                if ( $pid && ! isset( $seen[ $pid ] ) ) {
+                    $seen[ $pid ] = true;
+                    $ids[]        = $pid;
+                    if ( count( $ids ) >= $cap ) {
+                        return $ids;
+                    }
+                }
+            }
+        }
+        if ( ! empty( $ids ) ) {
+            return $ids;
+        }
+
+        // No curated local posts, so fall back to the topic-ranked posts.
+        $slugs = array();
+        foreach ( (array) $findings as $f ) {
+            $fid = isset( $f['id'] ) ? $f['id'] : '';
+            foreach ( ASQ_Config::finding_topics( $fid ) as $slug ) {
+                $slugs[ $slug ] = true;
+            }
+        }
+        return self::ranked_ids( array_keys( $slugs ), $exclude_id, $cap );
+    }
+
+    /**
+     * Render a JetEngine Listing restricted to exactly the given post ids, in
+     * that order. Returns '' when JetEngine is not active, no ids, or the
+     * listing produces nothing, so the caller can fall back to the built-in
+     * cards and the results screen can never break.
+     *
+     * @param int   $listing_id JetEngine listing (a jet-engine-listing post id).
+     * @param int[] $post_ids   The posts to show.
+     * @param int   $columns    Grid columns.
+     * @return string HTML, or '' to fall back.
+     */
+    public static function render_jet_listing( $listing_id, $post_ids, $columns = 3 ) {
+        $listing_id = absint( $listing_id );
+        $post_ids   = array_values( array_filter( array_map( 'absint', (array) $post_ids ) ) );
+        $columns    = max( 1, (int) $columns );
+
+        if ( ! $listing_id || empty( $post_ids ) || ! function_exists( 'jet_engine' ) ) {
+            return '';
+        }
+
+        // Restrict the listing's query to exactly our posts, in our order, for
+        // the duration of this one render only.
+        $inject = function ( $args ) use ( $post_ids ) {
+            $args['post__in']            = $post_ids;
+            $args['orderby']             = 'post__in';
+            $args['posts_per_page']      = count( $post_ids );
+            $args['ignore_sticky_posts'] = true;
+            $args['post__not_in']        = array();
+            unset( $args['tax_query'], $args['meta_query'], $args['s'], $args['paged'] );
+            return $args;
+        };
+
+        add_filter( 'jet-engine/listing/grid/posts-query-args', $inject, 999 );
+        $html = do_shortcode(
+            '[jet_engine_listing listing_id="' . $listing_id . '" columns="' . $columns . '" posts_num="' . count( $post_ids ) . '"]'
+        );
+        remove_filter( 'jet-engine/listing/grid/posts-query-args', $inject, 999 );
+
+        return is_string( $html ) ? trim( $html ) : '';
     }
 
     /**

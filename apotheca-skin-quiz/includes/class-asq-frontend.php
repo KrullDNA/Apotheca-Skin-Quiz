@@ -37,8 +37,10 @@ class ASQ_Frontend {
             'results_heading'  => '',
             'tab_day_label'    => '',
             'tab_night_label'  => '',
-            'decoder_url'      => '',
-            'rn_new_tab'       => '',
+            'decoder_url'        => '',
+            'rn_new_tab'         => '',
+            'rn_listing_id'      => 0,
+            'rn_listing_columns' => 3,
         ), $atts, 'apotheca_skin_quiz' );
 
         $finder_id = absint( $atts['id'] );
@@ -149,6 +151,11 @@ class ASQ_Frontend {
             }
             if ( ! empty( $atts['rn_new_tab'] ) ) {
                 echo ' data-rn-new-tab="1"';
+            }
+            // Optional JetEngine Listing for read-next, per widget.
+            if ( ! empty( $atts['rn_listing_id'] ) ) {
+                echo ' data-rn-listing-id="' . esc_attr( absint( $atts['rn_listing_id'] ) ) . '"';
+                echo ' data-rn-listing-columns="' . esc_attr( max( 1, absint( $atts['rn_listing_columns'] ) ) ) . '"';
             }
         ?>>
 
