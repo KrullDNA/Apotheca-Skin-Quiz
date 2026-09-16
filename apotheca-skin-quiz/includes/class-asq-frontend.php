@@ -30,6 +30,36 @@ class ASQ_Frontend {
         );
     }
 
+    /**
+     * Enqueue the icon fonts and JetEngine styles the read-next JetEngine
+     * Listing needs, since it is injected after page load. Each handle is only
+     * enqueued if it is registered, so this is safe whatever is installed.
+     */
+    protected function enqueue_listing_assets() {
+        $handles = array(
+            // Elementor icon fonts (the reading-time clock is usually one of
+            // these) and its frontend styles.
+            'elementor-frontend',
+            'elementor-icons',
+            'elementor-icons-fa-solid',
+            'elementor-icons-fa-regular',
+            'elementor-icons-fa-brands',
+            'elementor-icons-shared-0',
+            // Stand-alone Font Awesome, if a plugin provides it.
+            'font-awesome',
+            'font-awesome-5-all',
+            'fontawesome',
+            // JetEngine's own frontend styles.
+            'jet-engine-frontend',
+            'jet-engine',
+        );
+        foreach ( $handles as $handle ) {
+            if ( wp_style_is( $handle, 'registered' ) && ! wp_style_is( $handle, 'enqueued' ) ) {
+                wp_enqueue_style( $handle );
+            }
+        }
+    }
+
     public function render_shortcode( $atts ) {
         $atts = shortcode_atts( array(
             'id'               => 0,
@@ -81,6 +111,15 @@ class ASQ_Frontend {
 
         wp_enqueue_style( 'asq-frontend' );
         wp_enqueue_script( 'asq-frontend' );
+
+        // When read-next renders through a JetEngine Listing, it is injected into
+        // the page after load (from the results AJAX), so the icon fonts and
+        // JetEngine styles it relies on may not be present. Enqueue whatever of
+        // them is registered, otherwise icons like the reading-time clock fall
+        // back to a wrong glyph.
+        if ( ! empty( $atts['rn_listing_id'] ) ) {
+            $this->enqueue_listing_assets();
+        }
 
         // Check if we have a results session token in the URL.
         $results_token = isset( $_GET['asq_results'] ) ? preg_replace( '/[^a-zA-Z0-9]/', '', $_GET['asq_results'] ) : '';
