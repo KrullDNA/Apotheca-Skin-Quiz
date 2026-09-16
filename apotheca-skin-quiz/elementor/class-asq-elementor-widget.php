@@ -136,14 +136,18 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator'   => 'before',
         ) );
 
-        $this->add_control( 'rn_show_sort', array(
-            'label'        => __( 'Show a sort dropdown on read-next', 'apotheca-skin-quiz' ),
-            'type'         => Controls_Manager::SWITCHER,
-            'label_on'     => __( 'Yes', 'apotheca-skin-quiz' ),
-            'label_off'    => __( 'No', 'apotheca-skin-quiz' ),
-            'return_value' => 'yes',
-            'default'      => 'yes',
-            'description'  => __( 'Lets people re-sort the articles by name or date. Only appears when there are two or more.', 'apotheca-skin-quiz' ),
+        $this->add_control( 'rn_sort', array(
+            'label'       => __( 'Read-next: order the articles by', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::SELECT,
+            'default'     => 'relevance',
+            'options'     => array(
+                'relevance' => __( 'Most relevant', 'apotheca-skin-quiz' ),
+                'name_asc'  => __( 'Name (A to Z)', 'apotheca-skin-quiz' ),
+                'name_desc' => __( 'Name (Z to A)', 'apotheca-skin-quiz' ),
+                'date_desc' => __( 'Newest first', 'apotheca-skin-quiz' ),
+                'date_asc'  => __( 'Oldest first', 'apotheca-skin-quiz' ),
+            ),
+            'description' => __( 'The order everyone sees the articles in. You set it here, visitors do not choose.', 'apotheca-skin-quiz' ),
         ) );
 
         // Optional: render read-next through a JetEngine Listing so it matches
@@ -162,14 +166,16 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator'   => 'before',
         ) );
 
-        $this->add_control( 'rn_listing_columns', array(
-            'label'     => __( 'Read-next Listing columns', 'apotheca-skin-quiz' ),
-            'type'      => Controls_Manager::NUMBER,
-            'min'       => 1,
-            'max'       => 6,
-            'step'      => 1,
-            'default'   => 3,
-            'condition' => array( 'rn_listing_id!' => array( '', '0', 0 ) ),
+        $this->add_responsive_control( 'rn_listing_columns', array(
+            'label'          => __( 'Read-next Listing columns', 'apotheca-skin-quiz' ),
+            'type'           => Controls_Manager::NUMBER,
+            'min'            => 1,
+            'max'            => 6,
+            'step'           => 1,
+            'default'        => 3,
+            'tablet_default' => 2,
+            'mobile_default' => 1,
+            'condition'      => array( 'rn_listing_id!' => array( '', '0', 0 ) ),
         ) );
 
         $this->end_controls_section();
@@ -2234,7 +2240,6 @@ class ASQ_Elementor_Widget extends Widget_Base {
                     <section class="asq-reading-section asq-reading-section--read_next">
                         <h3 class="asq-reading-heading"><?php esc_html_e( 'Read next', 'apotheca-skin-quiz' ); ?></h3>
                         <p class="asq-reading-p asq-readnext-intro"><?php esc_html_e( 'A few things worth reading next.', 'apotheca-skin-quiz' ); ?></p>
-                        <div class="asq-readnext-sortbar"><span class="asq-readnext-sort-label"><?php esc_html_e( 'Sort', 'apotheca-skin-quiz' ); ?></span><select class="asq-readnext-sort"><option><?php esc_html_e( 'Most relevant', 'apotheca-skin-quiz' ); ?></option><option><?php esc_html_e( 'Name (A to Z)', 'apotheca-skin-quiz' ); ?></option><option><?php esc_html_e( 'Newest first', 'apotheca-skin-quiz' ); ?></option></select></div>
                         <div class="asq-readnext-cards">
                             <?php for ( $c = 1; $c <= 3; $c++ ) : ?>
                                 <a class="asq-readnext-card" href="#" onclick="return false;">
@@ -2307,16 +2312,28 @@ class ASQ_Elementor_Widget extends Widget_Base {
 
         $rn_count = min( 12, max( 1, absint( $settings['rn_count'] ?? 6 ) ) );
         $shortcode_atts .= ' rn_count="' . $rn_count . '"';
-        if ( ! isset( $settings['rn_show_sort'] ) || 'yes' === $settings['rn_show_sort'] ) {
-            $shortcode_atts .= ' rn_show_sort="1"';
+
+        $rn_sort_allowed = array( 'relevance', 'name_asc', 'name_desc', 'date_asc', 'date_desc' );
+        $rn_sort         = isset( $settings['rn_sort'] ) ? $settings['rn_sort'] : 'relevance';
+        if ( ! in_array( $rn_sort, $rn_sort_allowed, true ) ) {
+            $rn_sort = 'relevance';
         }
+        $shortcode_atts .= ' rn_sort="' . esc_attr( $rn_sort ) . '"';
 
         // Optional JetEngine Listing for read-next.
         $rn_listing_id = absint( $settings['rn_listing_id'] ?? 0 );
         if ( $rn_listing_id ) {
             $shortcode_atts .= ' rn_listing_id="' . $rn_listing_id . '"';
-            $rn_listing_cols = max( 1, absint( $settings['rn_listing_columns'] ?? 3 ) );
+            $rn_listing_cols   = max( 1, absint( $settings['rn_listing_columns'] ?? 3 ) );
+            $rn_listing_cols_t = absint( $settings['rn_listing_columns_tablet'] ?? 0 );
+            $rn_listing_cols_m = absint( $settings['rn_listing_columns_mobile'] ?? 0 );
             $shortcode_atts .= ' rn_listing_columns="' . $rn_listing_cols . '"';
+            if ( $rn_listing_cols_t ) {
+                $shortcode_atts .= ' rn_listing_columns_tablet="' . $rn_listing_cols_t . '"';
+            }
+            if ( $rn_listing_cols_m ) {
+                $shortcode_atts .= ' rn_listing_columns_mobile="' . $rn_listing_cols_m . '"';
+            }
         }
 
         // Read DN labels from finder post meta instead of Elementor settings

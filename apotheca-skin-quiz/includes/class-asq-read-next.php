@@ -386,17 +386,25 @@ class ASQ_Read_Next {
      * listing produces nothing, so the caller can fall back to the built-in
      * cards and the results screen can never break.
      *
-     * @param int   $listing_id JetEngine listing (a jet-engine-listing post id).
-     * @param int[] $post_ids   The posts to show.
-     * @param int   $columns    Grid columns.
+     * @param int   $listing_id     JetEngine listing (a jet-engine-listing post id).
+     * @param int[] $post_ids       The posts to show.
+     * @param int   $columns        Grid columns on desktop.
+     * @param int   $columns_tablet Grid columns on tablet (0 to leave to the listing).
+     * @param int   $columns_mobile Grid columns on mobile (0 to leave to the listing).
      * @return string HTML, or '' to fall back.
      */
-    public static function render_jet_listing( $listing_id, $post_ids, $columns = 3 ) {
-        $listing_id = absint( $listing_id );
-        $post_ids   = array_values( array_filter( array_map( 'absint', (array) $post_ids ) ) );
-        $columns    = max( 1, (int) $columns );
+    public static function render_jet_listing( $listing_id, $post_ids, $columns = 3, $columns_tablet = 0, $columns_mobile = 0 ) {
+        $listing_id     = absint( $listing_id );
+        $post_ids       = array_values( array_filter( array_map( 'absint', (array) $post_ids ) ) );
+        $columns        = max( 1, (int) $columns );
+        $columns_tablet = max( 0, (int) $columns_tablet );
+        $columns_mobile = max( 0, (int) $columns_mobile );
 
         if ( ! $listing_id || empty( $post_ids ) || ! function_exists( 'jet_engine' ) ) {
+            return '';
+        }
+        $engine = jet_engine();
+        if ( ! $engine || empty( $engine->listings ) ) {
             return '';
         }
 
@@ -413,12 +421,53 @@ class ASQ_Read_Next {
         };
 
         add_filter( 'jet-engine/listing/grid/posts-query-args', $inject, 999 );
-        $html = do_shortcode(
-            '[jet_engine_listing listing_id="' . $listing_id . '" columns="' . $columns . '" posts_num="' . count( $post_ids ) . '"]'
-        );
+
+        $html = '';
+        try {
+            // Preferred: JetEngine's programmatic grid render. The settings keys
+            // include both spellings of the listing id, since JetEngine has used
+            // the misspelled "lisitng_id" in the grid render historically.
+            if ( method_exists( $engine->listings, 'get_render_instance' ) ) {
+                $settings = array(
+                    'lisitng_id'          => $listing_id,
+                    'listing_id'          => $listing_id,
+                    'columns'             => $columns,
+                    'columns_tablet'      => $columns_tablet ? $columns_tablet : $columns,
+                    'columns_mobile'      => $columns_mobile ? $columns_mobile : 1,
+                    'posts_num'           => count( $post_ids ),
+                    'is_archive_template' => false,
+                );
+                $render = $engine->listings->get_render_instance( 'listing-grid', $settings );
+                if ( $render && method_exists( $render, 'render' ) ) {
+                    ob_start();
+                    $render->render();
+                    $html = (string) ob_get_clean();
+                }
+            }
+
+            // Fallback: the listing shortcode, but only if it is actually
+            // registered (otherwise do_shortcode returns the raw text).
+            if ( '' === trim( $html ) && function_exists( 'shortcode_exists' ) && shortcode_exists( 'jet_engine_listing' ) ) {
+                $atts  = 'listing_id="' . $listing_id . '" columns="' . $columns . '"';
+                $atts .= $columns_tablet ? ' columns_tablet="' . $columns_tablet . '"' : '';
+                $atts .= $columns_mobile ? ' columns_mobile="' . $columns_mobile . '"' : '';
+                $atts .= ' posts_num="' . count( $post_ids ) . '"';
+                $html  = do_shortcode( '[jet_engine_listing ' . $atts . ']' );
+            }
+        } catch ( \Throwable $e ) {
+            $html = '';
+        }
+
         remove_filter( 'jet-engine/listing/grid/posts-query-args', $inject, 999 );
 
-        return is_string( $html ) ? trim( $html ) : '';
+        $html = is_string( $html ) ? trim( $html ) : '';
+
+        // Never show a raw, unprocessed shortcode. If that is all we got, treat
+        // it as a failure so the caller falls back to the built-in cards.
+        if ( '' === $html || false !== strpos( $html, '[jet_engine_listing' ) ) {
+            return '';
+        }
+        return $html;
     }
 
     /* ────────── sorting (front-end sort dropdown) ────────── */

@@ -30,6 +30,36 @@ class ASQ_Frontend {
         );
     }
 
+    /**
+     * Enqueue the icon fonts and JetEngine styles the read-next JetEngine
+     * Listing needs, since it is injected after page load. Each handle is only
+     * enqueued if it is registered, so this is safe whatever is installed.
+     */
+    protected function enqueue_listing_assets() {
+        $handles = array(
+            // Elementor icon fonts (the reading-time clock is usually one of
+            // these) and its frontend styles.
+            'elementor-frontend',
+            'elementor-icons',
+            'elementor-icons-fa-solid',
+            'elementor-icons-fa-regular',
+            'elementor-icons-fa-brands',
+            'elementor-icons-shared-0',
+            // Stand-alone Font Awesome, if a plugin provides it.
+            'font-awesome',
+            'font-awesome-5-all',
+            'fontawesome',
+            // JetEngine's own frontend styles.
+            'jet-engine-frontend',
+            'jet-engine',
+        );
+        foreach ( $handles as $handle ) {
+            if ( wp_style_is( $handle, 'registered' ) && ! wp_style_is( $handle, 'enqueued' ) ) {
+                wp_enqueue_style( $handle );
+            }
+        }
+    }
+
     public function render_shortcode( $atts ) {
         $atts = shortcode_atts( array(
             'id'               => 0,
@@ -39,10 +69,12 @@ class ASQ_Frontend {
             'tab_night_label'  => '',
             'decoder_url'        => '',
             'rn_new_tab'         => '',
-            'rn_listing_id'      => 0,
-            'rn_listing_columns' => 3,
-            'rn_count'           => 6,
-            'rn_show_sort'       => '',
+            'rn_listing_id'             => 0,
+            'rn_listing_columns'        => 3,
+            'rn_listing_columns_tablet' => 0,
+            'rn_listing_columns_mobile' => 0,
+            'rn_count'                  => 6,
+            'rn_sort'                   => 'relevance',
         ), $atts, 'apotheca_skin_quiz' );
 
         $finder_id = absint( $atts['id'] );
@@ -79,6 +111,15 @@ class ASQ_Frontend {
 
         wp_enqueue_style( 'asq-frontend' );
         wp_enqueue_script( 'asq-frontend' );
+
+        // When read-next renders through a JetEngine Listing, it is injected into
+        // the page after load (from the results AJAX), so the icon fonts and
+        // JetEngine styles it relies on may not be present. Enqueue whatever of
+        // them is registered, otherwise icons like the reading-time clock fall
+        // back to a wrong glyph.
+        if ( ! empty( $atts['rn_listing_id'] ) ) {
+            $this->enqueue_listing_assets();
+        }
 
         // Check if we have a results session token in the URL.
         $results_token = isset( $_GET['asq_results'] ) ? preg_replace( '/[^a-zA-Z0-9]/', '', $_GET['asq_results'] ) : '';
@@ -158,12 +199,18 @@ class ASQ_Frontend {
             if ( ! empty( $atts['rn_listing_id'] ) ) {
                 echo ' data-rn-listing-id="' . esc_attr( absint( $atts['rn_listing_id'] ) ) . '"';
                 echo ' data-rn-listing-columns="' . esc_attr( max( 1, absint( $atts['rn_listing_columns'] ) ) ) . '"';
+                if ( ! empty( $atts['rn_listing_columns_tablet'] ) ) {
+                    echo ' data-rn-listing-columns-tablet="' . esc_attr( absint( $atts['rn_listing_columns_tablet'] ) ) . '"';
+                }
+                if ( ! empty( $atts['rn_listing_columns_mobile'] ) ) {
+                    echo ' data-rn-listing-columns-mobile="' . esc_attr( absint( $atts['rn_listing_columns_mobile'] ) ) . '"';
+                }
             }
-            // Read-next article count and the sort dropdown toggle.
+            // Read-next article count and the owner's global sort order.
             echo ' data-rn-count="' . esc_attr( min( 12, max( 1, absint( $atts['rn_count'] ) ) ) ) . '"';
-            if ( ! empty( $atts['rn_show_sort'] ) ) {
-                echo ' data-rn-show-sort="1"';
-            }
+            $rn_sort_allowed = array( 'relevance', 'name_asc', 'name_desc', 'date_asc', 'date_desc' );
+            $rn_sort         = in_array( $atts['rn_sort'], $rn_sort_allowed, true ) ? $atts['rn_sort'] : 'relevance';
+            echo ' data-rn-sort="' . esc_attr( $rn_sort ) . '"';
         ?>>
 
             <!-- Progress bar -->

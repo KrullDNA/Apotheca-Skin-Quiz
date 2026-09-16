@@ -1277,28 +1277,6 @@ i.asq-loading-icon {
     transition: opacity 0.15s ease;
 }
 
-/* Read-next sort dropdown */
-.asq-readnext-sortbar {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 8px;
-    margin: 0 0 16px;
-}
-.asq-readnext-sort-label {
-    font-size: 13px;
-    color: var(--asq-text-light, #666);
-}
-.asq-readnext-sort {
-    font: inherit;
-    font-size: 14px;
-    padding: 6px 10px;
-    border: 1px solid var(--asq-border, #ccc);
-    border-radius: var(--asq-radius-sm, 8px);
-    background: #fff;
-    color: var(--asq-text, #333);
-    cursor: pointer;
-}
 .asq-readnext-wrap .asq-reading-section {
     margin-bottom: 0;
 }
