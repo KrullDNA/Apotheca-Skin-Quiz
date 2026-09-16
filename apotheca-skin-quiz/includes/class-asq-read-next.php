@@ -52,9 +52,11 @@ class ASQ_Read_Next {
      * @param int   $exclude_id Page id to exclude (the page the quiz is on).
      * @return array Up to three cards: { title, url, excerpt, thumb }.
      */
-    public static function for_findings( $findings, $exclude_id = 0 ) {
+    public static function for_findings( $findings, $exclude_id = 0, $cap = self::CAP ) {
+        $cap = max( 1, (int) $cap );
+
         // Manually-curated articles for the fired readings take priority.
-        $manual = self::manual_for_findings( $findings, self::CAP );
+        $manual = self::manual_for_findings( $findings, $cap );
         if ( ! empty( $manual ) ) {
             return $manual;
         }
@@ -67,7 +69,7 @@ class ASQ_Read_Next {
                 $slugs[ $slug ] = true;
             }
         }
-        return self::query( array_keys( $slugs ), $exclude_id, self::CAP );
+        return self::query( array_keys( $slugs ), $exclude_id, $cap );
     }
 
     /**
@@ -105,10 +107,13 @@ class ASQ_Read_Next {
         $url   = isset( $row['url'] ) ? $row['url'] : '';
         $desc  = isset( $row['desc'] ) ? $row['desc'] : '';
         $thumb = isset( $row['image'] ) ? $row['image'] : '';
+        $date  = 0;
 
-        if ( '' !== $url && ( '' === $thumb || '' === $title || '' === $desc ) ) {
-            $pid = function_exists( 'url_to_postid' ) ? url_to_postid( $url ) : 0;
+        if ( '' !== $url && function_exists( 'url_to_postid' ) ) {
+            $pid = url_to_postid( $url );
             if ( $pid ) {
+                // A local post: fill any blanks and take its date for sorting.
+                $date = (int) get_post_time( 'U', true, $pid );
                 if ( '' === $thumb ) {
                     $featured = get_the_post_thumbnail_url( $pid, 'medium' );
                     if ( $featured ) {
@@ -129,6 +134,7 @@ class ASQ_Read_Next {
             'url'     => $url,
             'excerpt' => $desc,
             'thumb'   => $thumb,
+            'date'    => $date,
         );
     }
 
@@ -212,9 +218,28 @@ class ASQ_Read_Next {
     }
 
     /**
-     * Query, rank and cap. Cached per finding-set until a post is saved.
+     * Query, rank and cap, returning up to $cap read-next cards.
      */
     public static function query( $slugs, $exclude_id, $cap ) {
+        $cards = array();
+        foreach ( self::ranked_ids( $slugs, $exclude_id, $cap ) as $id ) {
+            $cards[] = array(
+                'title'   => get_the_title( $id ),
+                'url'     => get_permalink( $id ),
+                'excerpt' => self::excerpt( $id ),
+                'thumb'   => get_the_post_thumbnail_url( $id, 'medium' ) ?: '',
+                'date'    => (int) get_post_time( 'U', true, $id ),
+            );
+        }
+        return $cards;
+    }
+
+    /**
+     * Query, rank and cap, returning the ordered post ids. Cached per
+     * finding-set until a post is saved. This is the shared core used both by
+     * the built-in cards (query) and the JetEngine listing (post_ids_*).
+     */
+    public static function ranked_ids( $slugs, $exclude_id, $cap ) {
         $slugs = array_values( array_unique( array_filter( array_map( 'sanitize_title', (array) $slugs ) ) ) );
         if ( empty( $slugs ) ) {
             return array();
@@ -238,7 +263,7 @@ class ASQ_Read_Next {
         }
         sort( $existing );
 
-        $cache_key = 'asq_rn_' . self::cache_ver() . '_' . md5( $taxonomy . '|' . implode( ',', $existing ) . '|' . (int) $cap . '|' . (int) $exclude_id );
+        $cache_key = 'asq_rnid_' . self::cache_ver() . '_' . md5( $taxonomy . '|' . implode( ',', $existing ) . '|' . (int) $cap . '|' . (int) $exclude_id );
         $cached    = get_transient( $cache_key );
         if ( is_array( $cached ) ) {
             return $cached;
@@ -295,19 +320,176 @@ class ASQ_Read_Next {
             return $a['order'] <=> $b['order'];
         } );
 
-        $cards = array();
+        $out = array();
         foreach ( array_slice( $ranked, 0, $cap ) as $row ) {
-            $id    = $row['id'];
-            $cards[] = array(
-                'title'   => get_the_title( $id ),
-                'url'     => get_permalink( $id ),
-                'excerpt' => self::excerpt( $id ),
-                'thumb'   => get_the_post_thumbnail_url( $id, 'medium' ) ?: '',
-            );
+            $out[] = (int) $row['id'];
         }
 
-        set_transient( $cache_key, $cards, 12 * HOUR_IN_SECONDS );
+        set_transient( $cache_key, $out, 12 * HOUR_IN_SECONDS );
+        return $out;
+    }
+
+    /* ────────── JetEngine listing mode ────────── */
+
+    /**
+     * The ordered post ids the read-next would show for a set of findings, so a
+     * JetEngine Listing can render exactly those posts. Manual articles that are
+     * local posts are honoured first (external links can't feed a post listing);
+     * otherwise the topic-ranked posts are used.
+     *
+     * @param array $findings   Engine output (each with an 'id').
+     * @param int   $exclude_id Page id to exclude (the page the quiz is on).
+     * @param int   $cap        Max ids.
+     * @return int[] Ordered, unique post ids.
+     */
+    public static function post_ids_for_findings( $findings, $exclude_id = 0, $cap = self::CAP ) {
+        $cap  = max( 1, (int) $cap );
+        $ids  = array();
+        $seen = array();
+        $all  = self::articles();
+
+        foreach ( (array) $findings as $f ) {
+            $fid = isset( $f['id'] ) ? $f['id'] : '';
+            if ( '' === $fid || empty( $all[ $fid ] ) ) {
+                continue;
+            }
+            foreach ( (array) $all[ $fid ] as $row ) {
+                $url = isset( $row['url'] ) ? $row['url'] : '';
+                $pid = ( '' !== $url && function_exists( 'url_to_postid' ) ) ? (int) url_to_postid( $url ) : 0;
+                if ( $pid && ! isset( $seen[ $pid ] ) ) {
+                    $seen[ $pid ] = true;
+                    $ids[]        = $pid;
+                    if ( count( $ids ) >= $cap ) {
+                        return $ids;
+                    }
+                }
+            }
+        }
+        if ( ! empty( $ids ) ) {
+            return $ids;
+        }
+
+        // No curated local posts, so fall back to the topic-ranked posts.
+        $slugs = array();
+        foreach ( (array) $findings as $f ) {
+            $fid = isset( $f['id'] ) ? $f['id'] : '';
+            foreach ( ASQ_Config::finding_topics( $fid ) as $slug ) {
+                $slugs[ $slug ] = true;
+            }
+        }
+        return self::ranked_ids( array_keys( $slugs ), $exclude_id, $cap );
+    }
+
+    /**
+     * Render a JetEngine Listing restricted to exactly the given post ids, in
+     * that order. Returns '' when JetEngine is not active, no ids, or the
+     * listing produces nothing, so the caller can fall back to the built-in
+     * cards and the results screen can never break.
+     *
+     * @param int   $listing_id JetEngine listing (a jet-engine-listing post id).
+     * @param int[] $post_ids   The posts to show.
+     * @param int   $columns    Grid columns.
+     * @return string HTML, or '' to fall back.
+     */
+    public static function render_jet_listing( $listing_id, $post_ids, $columns = 3 ) {
+        $listing_id = absint( $listing_id );
+        $post_ids   = array_values( array_filter( array_map( 'absint', (array) $post_ids ) ) );
+        $columns    = max( 1, (int) $columns );
+
+        if ( ! $listing_id || empty( $post_ids ) || ! function_exists( 'jet_engine' ) ) {
+            return '';
+        }
+
+        // Restrict the listing's query to exactly our posts, in our order, for
+        // the duration of this one render only.
+        $inject = function ( $args ) use ( $post_ids ) {
+            $args['post__in']            = $post_ids;
+            $args['orderby']             = 'post__in';
+            $args['posts_per_page']      = count( $post_ids );
+            $args['ignore_sticky_posts'] = true;
+            $args['post__not_in']        = array();
+            unset( $args['tax_query'], $args['meta_query'], $args['s'], $args['paged'] );
+            return $args;
+        };
+
+        add_filter( 'jet-engine/listing/grid/posts-query-args', $inject, 999 );
+        $html = do_shortcode(
+            '[jet_engine_listing listing_id="' . $listing_id . '" columns="' . $columns . '" posts_num="' . count( $post_ids ) . '"]'
+        );
+        remove_filter( 'jet-engine/listing/grid/posts-query-args', $inject, 999 );
+
+        return is_string( $html ) ? trim( $html ) : '';
+    }
+
+    /* ────────── sorting (front-end sort dropdown) ────────── */
+
+    /** The sort keys the read-next dropdown offers. */
+    public static function sort_keys() {
+        return array( 'relevance', 'name_asc', 'name_desc', 'date_asc', 'date_desc' );
+    }
+
+    /** Normalise a requested sort to a known key, defaulting to relevance. */
+    public static function clean_sort( $sort ) {
+        $sort = is_string( $sort ) ? $sort : '';
+        return in_array( $sort, self::sort_keys(), true ) ? $sort : 'relevance';
+    }
+
+    /**
+     * Sort a list of post ids for the JetEngine listing. Relevance keeps the
+     * ranked order the finding query produced.
+     */
+    public static function sort_ids( $ids, $sort ) {
+        $ids  = array_values( array_filter( array_map( 'absint', (array) $ids ) ) );
+        $sort = self::clean_sort( $sort );
+        if ( 'relevance' === $sort || count( $ids ) < 2 ) {
+            return $ids;
+        }
+        $rows = array();
+        foreach ( $ids as $id ) {
+            $rows[] = array(
+                'id'    => $id,
+                'title' => get_the_title( $id ),
+                'date'  => (int) get_post_time( 'U', true, $id ),
+            );
+        }
+        usort( $rows, function ( $a, $b ) use ( $sort ) {
+            return self::cmp_items( $a, $b, $sort );
+        } );
+        return array_map( function ( $r ) { return (int) $r['id']; }, $rows );
+    }
+
+    /**
+     * Sort the built-in cards. Relevance keeps their order as returned.
+     */
+    public static function sort_cards( $cards, $sort ) {
+        $cards = array_values( (array) $cards );
+        $sort  = self::clean_sort( $sort );
+        if ( 'relevance' === $sort || count( $cards ) < 2 ) {
+            return $cards;
+        }
+        usort( $cards, function ( $a, $b ) use ( $sort ) {
+            return self::cmp_items(
+                array( 'title' => isset( $a['title'] ) ? $a['title'] : '', 'date' => isset( $a['date'] ) ? (int) $a['date'] : 0 ),
+                array( 'title' => isset( $b['title'] ) ? $b['title'] : '', 'date' => isset( $b['date'] ) ? (int) $b['date'] : 0 ),
+                $sort
+            );
+        } );
         return $cards;
+    }
+
+    /** Compare two { title, date } items for the given sort key. */
+    protected static function cmp_items( $a, $b, $sort ) {
+        switch ( $sort ) {
+            case 'name_asc':
+                return strcasecmp( (string) $a['title'], (string) $b['title'] );
+            case 'name_desc':
+                return strcasecmp( (string) $b['title'], (string) $a['title'] );
+            case 'date_asc':
+                return ( (int) $a['date'] ) <=> ( (int) $b['date'] );
+            case 'date_desc':
+                return ( (int) $b['date'] ) <=> ( (int) $a['date'] );
+        }
+        return 0;
     }
 
     /**

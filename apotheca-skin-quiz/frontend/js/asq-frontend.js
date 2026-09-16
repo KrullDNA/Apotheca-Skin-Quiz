@@ -23,6 +23,11 @@
         this.options    = $el.data('options') || {};
         this.decoderUrl = $el.data('decoder-url') || '';  // F12 link target, per widget
         this.rnNewTab   = $el.data('rn-new-tab') ? 1 : 0; // read-next opens in a new tab
+        this.rnListingId   = parseInt($el.data('rn-listing-id'), 10) || 0;   // optional JetEngine Listing
+        this.rnListingCols = parseInt($el.data('rn-listing-columns'), 10) || 3;
+        this.rnCount       = parseInt($el.data('rn-count'), 10) || 6;        // read-next article count
+        this.rnShowSort    = $el.data('rn-show-sort') ? 1 : 0;               // show the sort dropdown
+        this.rnSort        = 'relevance';                                    // current read-next sort
         this.current    = 0;
         this.answers    = {};  // { questionIndex: [answerIndices] }
         this.followupAnswers = {};  // { "qi_ai": [followupAnswerIndices] }
@@ -138,6 +143,12 @@
                     try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
                     catch (e) { el.scrollIntoView(); }
                 }
+            });
+
+            // Re-sort the read-next articles when the dropdown changes.
+            this.$el.on('change', '.asq-readnext-sort', function () {
+                self.rnSort = $(this).val() || 'relevance';
+                self.reloadReadNext();
             });
 
             // "Start again" mid-quiz: confirm, then wipe answers and restart.
@@ -792,6 +803,13 @@
                 nonce: asqFrontend.nonce,
                 finder_id: self.finderId,
                 source_id: asqFrontend.source_id,
+                decoder_url: self.decoderUrl,
+                rn_new_tab: self.rnNewTab,
+                rn_listing_id: self.rnListingId,
+                rn_listing_columns: self.rnListingCols,
+                rn_count: self.rnCount,
+                rn_show_sort: self.rnShowSort,
+                rn_sort: self.rnSort,
                 answers: '{}',
                 followup_answers: '{}',
                 results_token: token
@@ -847,6 +865,11 @@
                 source_id: asqFrontend.source_id,
                 decoder_url: this.decoderUrl,
                 rn_new_tab: this.rnNewTab,
+                rn_listing_id: this.rnListingId,
+                rn_listing_columns: this.rnListingCols,
+                rn_count: this.rnCount,
+                rn_show_sort: this.rnShowSort,
+                rn_sort: this.rnSort,
                 answers: JSON.stringify(this.answers),
                 followup_answers: JSON.stringify(this.followupAnswers)
             }, function (res) {
@@ -936,6 +959,48 @@
                 }
                 try { $focusTarget.trigger('focus'); } catch (e) {}
             }
+        },
+
+        /* ───────── Re-sort read-next ───────── */
+
+        // Re-render just the read-next block for the current sort, leaving the
+        // reading itself untouched. Works for both the built-in cards and a
+        // JetEngine listing, and for a shared/emailed results view (the token
+        // rehydrates the answers server-side).
+        reloadReadNext: function () {
+            var self  = this;
+            var $wrap = this.$resultsScreen.find('.asq-readnext-wrap');
+            if (!$wrap.length) return;
+            $wrap.addClass('asq-readnext-loading');
+
+            $.post(asqFrontend.ajax_url, {
+                action: 'asq_compute_results',
+                nonce: asqFrontend.nonce,
+                finder_id: this.finderId,
+                source_id: asqFrontend.source_id,
+                decoder_url: this.decoderUrl,
+                rn_new_tab: this.rnNewTab,
+                rn_listing_id: this.rnListingId,
+                rn_listing_columns: this.rnListingCols,
+                rn_count: this.rnCount,
+                rn_show_sort: this.rnShowSort,
+                rn_sort: this.rnSort,
+                answers: JSON.stringify(this.answers),
+                followup_answers: JSON.stringify(this.followupAnswers),
+                results_token: asqFrontend.results_token || ''
+            }, function (res) {
+                $wrap.removeClass('asq-readnext-loading');
+                if (res && res.success) {
+                    var rn = (res.data.reading_readnext_html || '').trim();
+                    if (rn) {
+                        $wrap.html(rn).prop('hidden', false);
+                        // Keep the dropdown focused after the swap for keyboard use.
+                        try { $wrap.find('.asq-readnext-sort').trigger('focus'); } catch (e) {}
+                    }
+                }
+            }).fail(function () {
+                $wrap.removeClass('asq-readnext-loading');
+            });
         },
 
         /* ───────── Start over ───────── */
