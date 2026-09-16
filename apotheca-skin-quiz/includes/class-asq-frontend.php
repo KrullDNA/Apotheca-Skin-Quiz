@@ -39,10 +39,12 @@ class ASQ_Frontend {
             'tab_night_label'  => '',
             'decoder_url'        => '',
             'rn_new_tab'         => '',
-            'rn_listing_id'      => 0,
-            'rn_listing_columns' => 3,
-            'rn_count'           => 6,
-            'rn_show_sort'       => '',
+            'rn_listing_id'             => 0,
+            'rn_listing_columns'        => 3,
+            'rn_listing_columns_tablet' => 0,
+            'rn_listing_columns_mobile' => 0,
+            'rn_count'                  => 6,
+            'rn_show_sort'              => '',
         ), $atts, 'apotheca_skin_quiz' );
 
         $finder_id = absint( $atts['id'] );
@@ -158,6 +160,12 @@ class ASQ_Frontend {
             if ( ! empty( $atts['rn_listing_id'] ) ) {
                 echo ' data-rn-listing-id="' . esc_attr( absint( $atts['rn_listing_id'] ) ) . '"';
                 echo ' data-rn-listing-columns="' . esc_attr( max( 1, absint( $atts['rn_listing_columns'] ) ) ) . '"';
+                if ( ! empty( $atts['rn_listing_columns_tablet'] ) ) {
+                    echo ' data-rn-listing-columns-tablet="' . esc_attr( absint( $atts['rn_listing_columns_tablet'] ) ) . '"';
+                }
+                if ( ! empty( $atts['rn_listing_columns_mobile'] ) ) {
+                    echo ' data-rn-listing-columns-mobile="' . esc_attr( absint( $atts['rn_listing_columns_mobile'] ) ) . '"';
+                }
             }
             // Read-next article count and the sort dropdown toggle.
             echo ' data-rn-count="' . esc_attr( min( 12, max( 1, absint( $atts['rn_count'] ) ) ) ) . '"';

@@ -162,14 +162,16 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator'   => 'before',
         ) );
 
-        $this->add_control( 'rn_listing_columns', array(
-            'label'     => __( 'Read-next Listing columns', 'apotheca-skin-quiz' ),
-            'type'      => Controls_Manager::NUMBER,
-            'min'       => 1,
-            'max'       => 6,
-            'step'      => 1,
-            'default'   => 3,
-            'condition' => array( 'rn_listing_id!' => array( '', '0', 0 ) ),
+        $this->add_responsive_control( 'rn_listing_columns', array(
+            'label'          => __( 'Read-next Listing columns', 'apotheca-skin-quiz' ),
+            'type'           => Controls_Manager::NUMBER,
+            'min'            => 1,
+            'max'            => 6,
+            'step'           => 1,
+            'default'        => 3,
+            'tablet_default' => 2,
+            'mobile_default' => 1,
+            'condition'      => array( 'rn_listing_id!' => array( '', '0', 0 ) ),
         ) );
 
         $this->end_controls_section();
@@ -2315,8 +2317,16 @@ class ASQ_Elementor_Widget extends Widget_Base {
         $rn_listing_id = absint( $settings['rn_listing_id'] ?? 0 );
         if ( $rn_listing_id ) {
             $shortcode_atts .= ' rn_listing_id="' . $rn_listing_id . '"';
-            $rn_listing_cols = max( 1, absint( $settings['rn_listing_columns'] ?? 3 ) );
+            $rn_listing_cols   = max( 1, absint( $settings['rn_listing_columns'] ?? 3 ) );
+            $rn_listing_cols_t = absint( $settings['rn_listing_columns_tablet'] ?? 0 );
+            $rn_listing_cols_m = absint( $settings['rn_listing_columns_mobile'] ?? 0 );
             $shortcode_atts .= ' rn_listing_columns="' . $rn_listing_cols . '"';
+            if ( $rn_listing_cols_t ) {
+                $shortcode_atts .= ' rn_listing_columns_tablet="' . $rn_listing_cols_t . '"';
+            }
+            if ( $rn_listing_cols_m ) {
+                $shortcode_atts .= ' rn_listing_columns_mobile="' . $rn_listing_cols_m . '"';
+            }
         }
 
         // Read DN labels from finder post meta instead of Elementor settings

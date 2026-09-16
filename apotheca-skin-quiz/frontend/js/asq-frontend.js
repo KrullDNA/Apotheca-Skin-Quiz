@@ -23,8 +23,10 @@
         this.options    = $el.data('options') || {};
         this.decoderUrl = $el.data('decoder-url') || '';  // F12 link target, per widget
         this.rnNewTab   = $el.data('rn-new-tab') ? 1 : 0; // read-next opens in a new tab
-        this.rnListingId   = parseInt($el.data('rn-listing-id'), 10) || 0;   // optional JetEngine Listing
-        this.rnListingCols = parseInt($el.data('rn-listing-columns'), 10) || 3;
+        this.rnListingId    = parseInt($el.data('rn-listing-id'), 10) || 0;   // optional JetEngine Listing
+        this.rnListingCols  = parseInt($el.data('rn-listing-columns'), 10) || 3;
+        this.rnListingColsT = parseInt($el.data('rn-listing-columns-tablet'), 10) || 0; // per-device columns
+        this.rnListingColsM = parseInt($el.data('rn-listing-columns-mobile'), 10) || 0;
         this.rnCount       = parseInt($el.data('rn-count'), 10) || 6;        // read-next article count
         this.rnShowSort    = $el.data('rn-show-sort') ? 1 : 0;               // show the sort dropdown
         this.rnSort        = 'relevance';                                    // current read-next sort
@@ -807,6 +809,8 @@
                 rn_new_tab: self.rnNewTab,
                 rn_listing_id: self.rnListingId,
                 rn_listing_columns: self.rnListingCols,
+                rn_listing_columns_tablet: self.rnListingColsT,
+                rn_listing_columns_mobile: self.rnListingColsM,
                 rn_count: self.rnCount,
                 rn_show_sort: self.rnShowSort,
                 rn_sort: self.rnSort,
@@ -867,6 +871,8 @@
                 rn_new_tab: this.rnNewTab,
                 rn_listing_id: this.rnListingId,
                 rn_listing_columns: this.rnListingCols,
+                rn_listing_columns_tablet: this.rnListingColsT,
+                rn_listing_columns_mobile: this.rnListingColsM,
                 rn_count: this.rnCount,
                 rn_show_sort: this.rnShowSort,
                 rn_sort: this.rnSort,
@@ -982,6 +988,8 @@
                 rn_new_tab: this.rnNewTab,
                 rn_listing_id: this.rnListingId,
                 rn_listing_columns: this.rnListingCols,
+                rn_listing_columns_tablet: this.rnListingColsT,
+                rn_listing_columns_mobile: this.rnListingColsM,
                 rn_count: this.rnCount,
                 rn_show_sort: this.rnShowSort,
                 rn_sort: this.rnSort,

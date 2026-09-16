@@ -152,8 +152,10 @@ class ASQ_Ajax {
         $rn_count        = min( 12, max( 1, absint( $_POST['rn_count'] ?? 6 ) ) );
         $rn_sort         = ASQ_Read_Next::clean_sort( sanitize_key( wp_unslash( $_POST['rn_sort'] ?? 'relevance' ) ) );
         $rn_show_sort    = ! empty( $_POST['rn_show_sort'] );
-        $rn_listing_id   = absint( $_POST['rn_listing_id'] ?? 0 );
-        $rn_listing_cols = max( 1, absint( $_POST['rn_listing_columns'] ?? 3 ) );
+        $rn_listing_id     = absint( $_POST['rn_listing_id'] ?? 0 );
+        $rn_listing_cols   = max( 1, absint( $_POST['rn_listing_columns'] ?? 3 ) );
+        $rn_listing_cols_t = absint( $_POST['rn_listing_columns_tablet'] ?? 0 );
+        $rn_listing_cols_m = absint( $_POST['rn_listing_columns_mobile'] ?? 0 );
 
         $listing_html  = '';
         $rn_item_count = 0;
@@ -161,7 +163,7 @@ class ASQ_Ajax {
             $post_ids      = ASQ_Read_Next::post_ids_for_findings( $rn_findings, $source_id, $rn_count );
             $post_ids      = ASQ_Read_Next::sort_ids( $post_ids, $rn_sort );
             $rn_item_count = count( $post_ids );
-            $listing_html  = ASQ_Read_Next::render_jet_listing( $rn_listing_id, $post_ids, $rn_listing_cols );
+            $listing_html  = ASQ_Read_Next::render_jet_listing( $rn_listing_id, $post_ids, $rn_listing_cols, $rn_listing_cols_t, $rn_listing_cols_m );
         }
 
         if ( '' !== $listing_html ) {
