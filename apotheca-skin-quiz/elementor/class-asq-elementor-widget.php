@@ -125,6 +125,27 @@ class ASQ_Elementor_Widget extends Widget_Base {
             'separator'    => 'before',
         ) );
 
+        $this->add_control( 'rn_count', array(
+            'label'       => __( 'Read-next: number of articles', 'apotheca-skin-quiz' ),
+            'type'        => Controls_Manager::NUMBER,
+            'min'         => 1,
+            'max'         => 12,
+            'step'        => 1,
+            'default'     => 6,
+            'description' => __( 'How many articles to show. They start ordered most-relevant first.', 'apotheca-skin-quiz' ),
+            'separator'   => 'before',
+        ) );
+
+        $this->add_control( 'rn_show_sort', array(
+            'label'        => __( 'Show a sort dropdown on read-next', 'apotheca-skin-quiz' ),
+            'type'         => Controls_Manager::SWITCHER,
+            'label_on'     => __( 'Yes', 'apotheca-skin-quiz' ),
+            'label_off'    => __( 'No', 'apotheca-skin-quiz' ),
+            'return_value' => 'yes',
+            'default'      => 'yes',
+            'description'  => __( 'Lets people re-sort the articles by name or date. Only appears when there are two or more.', 'apotheca-skin-quiz' ),
+        ) );
+
         // Optional: render read-next through a JetEngine Listing so it matches
         // the article grids elsewhere. Leave the id at 0 to use the built-in
         // cards. In listing mode read-next shows blog posts only (any external
@@ -2213,6 +2234,7 @@ class ASQ_Elementor_Widget extends Widget_Base {
                     <section class="asq-reading-section asq-reading-section--read_next">
                         <h3 class="asq-reading-heading"><?php esc_html_e( 'Read next', 'apotheca-skin-quiz' ); ?></h3>
                         <p class="asq-reading-p asq-readnext-intro"><?php esc_html_e( 'A few things worth reading next.', 'apotheca-skin-quiz' ); ?></p>
+                        <div class="asq-readnext-sortbar"><span class="asq-readnext-sort-label"><?php esc_html_e( 'Sort', 'apotheca-skin-quiz' ); ?></span><select class="asq-readnext-sort"><option><?php esc_html_e( 'Most relevant', 'apotheca-skin-quiz' ); ?></option><option><?php esc_html_e( 'Name (A to Z)', 'apotheca-skin-quiz' ); ?></option><option><?php esc_html_e( 'Newest first', 'apotheca-skin-quiz' ); ?></option></select></div>
                         <div class="asq-readnext-cards">
                             <?php for ( $c = 1; $c <= 3; $c++ ) : ?>
                                 <a class="asq-readnext-card" href="#" onclick="return false;">
@@ -2281,6 +2303,12 @@ class ASQ_Elementor_Widget extends Widget_Base {
 
         if ( ! empty( $settings['rn_new_tab'] ) && 'yes' === $settings['rn_new_tab'] ) {
             $shortcode_atts .= ' rn_new_tab="1"';
+        }
+
+        $rn_count = min( 12, max( 1, absint( $settings['rn_count'] ?? 6 ) ) );
+        $shortcode_atts .= ' rn_count="' . $rn_count . '"';
+        if ( ! isset( $settings['rn_show_sort'] ) || 'yes' === $settings['rn_show_sort'] ) {
+            $shortcode_atts .= ' rn_show_sort="1"';
         }
 
         // Optional JetEngine Listing for read-next.

@@ -41,6 +41,8 @@ class ASQ_Frontend {
             'rn_new_tab'         => '',
             'rn_listing_id'      => 0,
             'rn_listing_columns' => 3,
+            'rn_count'           => 6,
+            'rn_show_sort'       => '',
         ), $atts, 'apotheca_skin_quiz' );
 
         $finder_id = absint( $atts['id'] );
@@ -156,6 +158,11 @@ class ASQ_Frontend {
             if ( ! empty( $atts['rn_listing_id'] ) ) {
                 echo ' data-rn-listing-id="' . esc_attr( absint( $atts['rn_listing_id'] ) ) . '"';
                 echo ' data-rn-listing-columns="' . esc_attr( max( 1, absint( $atts['rn_listing_columns'] ) ) ) . '"';
+            }
+            // Read-next article count and the sort dropdown toggle.
+            echo ' data-rn-count="' . esc_attr( min( 12, max( 1, absint( $atts['rn_count'] ) ) ) ) . '"';
+            if ( ! empty( $atts['rn_show_sort'] ) ) {
+                echo ' data-rn-show-sort="1"';
             }
         ?>>
 

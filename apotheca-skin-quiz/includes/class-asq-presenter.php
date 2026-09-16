@@ -35,6 +35,49 @@ class ASQ_Presenter {
     /** @var bool Whether read-next links open in a new tab (Elementor control). */
     protected static $rn_new_tab = false;
 
+    /** @var string The currently selected read-next sort (front-end dropdown). */
+    protected static $rn_sort = 'relevance';
+
+    /** @var bool Whether to show the read-next sort dropdown for this render. */
+    protected static $rn_show_sort = false;
+
+    /**
+     * Set the read-next sort state for the next render. The caller decides
+     * whether to show the dropdown (e.g. only when there are two or more
+     * articles). Called from the AJAX handler before rendering.
+     */
+    public static function set_readnext_sort( $sort, $show ) {
+        $allowed          = array( 'relevance', 'name_asc', 'name_desc', 'date_asc', 'date_desc' );
+        self::$rn_sort      = in_array( $sort, $allowed, true ) ? $sort : 'relevance';
+        self::$rn_show_sort = (bool) $show;
+    }
+
+    /**
+     * The read-next sort dropdown, or '' when it should not show. A change on it
+     * re-renders the read-next block (see the front-end controller).
+     */
+    public static function readnext_sortbar() {
+        if ( ! self::$rn_show_sort ) {
+            return '';
+        }
+        $opts = array(
+            'relevance' => __( 'Most relevant', 'apotheca-skin-quiz' ),
+            'name_asc'  => __( 'Name (A to Z)', 'apotheca-skin-quiz' ),
+            'name_desc' => __( 'Name (Z to A)', 'apotheca-skin-quiz' ),
+            'date_desc' => __( 'Newest first', 'apotheca-skin-quiz' ),
+            'date_asc'  => __( 'Oldest first', 'apotheca-skin-quiz' ),
+        );
+        $html  = '<div class="asq-readnext-sortbar">';
+        $html .= '<label class="asq-readnext-sort-label" for="asq-rn-sort">' . esc_html__( 'Sort', 'apotheca-skin-quiz' ) . '</label>';
+        $html .= '<select class="asq-readnext-sort" id="asq-rn-sort" aria-label="' . esc_attr__( 'Sort the articles', 'apotheca-skin-quiz' ) . '">';
+        foreach ( $opts as $k => $label ) {
+            $sel   = ( $k === self::$rn_sort ) ? ' selected' : '';
+            $html .= '<option value="' . esc_attr( $k ) . '"' . $sel . '>' . esc_html( $label ) . '</option>';
+        }
+        $html .= '</select></div>';
+        return $html;
+    }
+
     /**
      * The internal handshake between the quiz and the decoder. Hard-coded on
      * both sides on purpose: a name read from settings in two places is a quiet
@@ -416,6 +459,7 @@ class ASQ_Presenter {
         if ( '' !== $intro ) {
             $html .= '<p class="asq-reading-p asq-readnext-intro">' . esc_html( self::texturize( $intro ) ) . '</p>';
         }
+        $html .= self::readnext_sortbar();
         $html .= '<div class="asq-readnext-listing">' . $inner_html . '</div>';
         $html .= '</section>';
         return $html;
@@ -432,6 +476,7 @@ class ASQ_Presenter {
             if ( ! empty( $section['intro'] ) ) {
                 $html .= '<p class="asq-reading-p asq-readnext-intro">' . esc_html( self::texturize( $section['intro'] ) ) . '</p>';
             }
+            $html .= self::readnext_sortbar();
             $html .= self::render_articles( $section['articles'] );
         } else {
             foreach ( $section['paragraphs'] as $para ) {

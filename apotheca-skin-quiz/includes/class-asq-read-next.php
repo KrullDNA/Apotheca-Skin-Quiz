@@ -52,9 +52,11 @@ class ASQ_Read_Next {
      * @param int   $exclude_id Page id to exclude (the page the quiz is on).
      * @return array Up to three cards: { title, url, excerpt, thumb }.
      */
-    public static function for_findings( $findings, $exclude_id = 0 ) {
+    public static function for_findings( $findings, $exclude_id = 0, $cap = self::CAP ) {
+        $cap = max( 1, (int) $cap );
+
         // Manually-curated articles for the fired readings take priority.
-        $manual = self::manual_for_findings( $findings, self::CAP );
+        $manual = self::manual_for_findings( $findings, $cap );
         if ( ! empty( $manual ) ) {
             return $manual;
         }
@@ -67,7 +69,7 @@ class ASQ_Read_Next {
                 $slugs[ $slug ] = true;
             }
         }
-        return self::query( array_keys( $slugs ), $exclude_id, self::CAP );
+        return self::query( array_keys( $slugs ), $exclude_id, $cap );
     }
 
     /**
@@ -105,10 +107,13 @@ class ASQ_Read_Next {
         $url   = isset( $row['url'] ) ? $row['url'] : '';
         $desc  = isset( $row['desc'] ) ? $row['desc'] : '';
         $thumb = isset( $row['image'] ) ? $row['image'] : '';
+        $date  = 0;
 
-        if ( '' !== $url && ( '' === $thumb || '' === $title || '' === $desc ) ) {
-            $pid = function_exists( 'url_to_postid' ) ? url_to_postid( $url ) : 0;
+        if ( '' !== $url && function_exists( 'url_to_postid' ) ) {
+            $pid = url_to_postid( $url );
             if ( $pid ) {
+                // A local post: fill any blanks and take its date for sorting.
+                $date = (int) get_post_time( 'U', true, $pid );
                 if ( '' === $thumb ) {
                     $featured = get_the_post_thumbnail_url( $pid, 'medium' );
                     if ( $featured ) {
@@ -129,6 +134,7 @@ class ASQ_Read_Next {
             'url'     => $url,
             'excerpt' => $desc,
             'thumb'   => $thumb,
+            'date'    => $date,
         );
     }
 
@@ -222,6 +228,7 @@ class ASQ_Read_Next {
                 'url'     => get_permalink( $id ),
                 'excerpt' => self::excerpt( $id ),
                 'thumb'   => get_the_post_thumbnail_url( $id, 'medium' ) ?: '',
+                'date'    => (int) get_post_time( 'U', true, $id ),
             );
         }
         return $cards;
@@ -412,6 +419,77 @@ class ASQ_Read_Next {
         remove_filter( 'jet-engine/listing/grid/posts-query-args', $inject, 999 );
 
         return is_string( $html ) ? trim( $html ) : '';
+    }
+
+    /* ────────── sorting (front-end sort dropdown) ────────── */
+
+    /** The sort keys the read-next dropdown offers. */
+    public static function sort_keys() {
+        return array( 'relevance', 'name_asc', 'name_desc', 'date_asc', 'date_desc' );
+    }
+
+    /** Normalise a requested sort to a known key, defaulting to relevance. */
+    public static function clean_sort( $sort ) {
+        $sort = is_string( $sort ) ? $sort : '';
+        return in_array( $sort, self::sort_keys(), true ) ? $sort : 'relevance';
+    }
+
+    /**
+     * Sort a list of post ids for the JetEngine listing. Relevance keeps the
+     * ranked order the finding query produced.
+     */
+    public static function sort_ids( $ids, $sort ) {
+        $ids  = array_values( array_filter( array_map( 'absint', (array) $ids ) ) );
+        $sort = self::clean_sort( $sort );
+        if ( 'relevance' === $sort || count( $ids ) < 2 ) {
+            return $ids;
+        }
+        $rows = array();
+        foreach ( $ids as $id ) {
+            $rows[] = array(
+                'id'    => $id,
+                'title' => get_the_title( $id ),
+                'date'  => (int) get_post_time( 'U', true, $id ),
+            );
+        }
+        usort( $rows, function ( $a, $b ) use ( $sort ) {
+            return self::cmp_items( $a, $b, $sort );
+        } );
+        return array_map( function ( $r ) { return (int) $r['id']; }, $rows );
+    }
+
+    /**
+     * Sort the built-in cards. Relevance keeps their order as returned.
+     */
+    public static function sort_cards( $cards, $sort ) {
+        $cards = array_values( (array) $cards );
+        $sort  = self::clean_sort( $sort );
+        if ( 'relevance' === $sort || count( $cards ) < 2 ) {
+            return $cards;
+        }
+        usort( $cards, function ( $a, $b ) use ( $sort ) {
+            return self::cmp_items(
+                array( 'title' => isset( $a['title'] ) ? $a['title'] : '', 'date' => isset( $a['date'] ) ? (int) $a['date'] : 0 ),
+                array( 'title' => isset( $b['title'] ) ? $b['title'] : '', 'date' => isset( $b['date'] ) ? (int) $b['date'] : 0 ),
+                $sort
+            );
+        } );
+        return $cards;
+    }
+
+    /** Compare two { title, date } items for the given sort key. */
+    protected static function cmp_items( $a, $b, $sort ) {
+        switch ( $sort ) {
+            case 'name_asc':
+                return strcasecmp( (string) $a['title'], (string) $b['title'] );
+            case 'name_desc':
+                return strcasecmp( (string) $b['title'], (string) $a['title'] );
+            case 'date_asc':
+                return ( (int) $a['date'] ) <=> ( (int) $b['date'] );
+            case 'date_desc':
+                return ( (int) $b['date'] ) <=> ( (int) $a['date'] );
+        }
+        return 0;
     }
 
     /**
