@@ -945,6 +945,7 @@
             if ($readnext.length) {
                 if (rn) {
                     $readnext.html(rn).prop('hidden', false);
+                    this.makeListingClickable($readnext);
                 } else {
                     $readnext.empty().prop('hidden', true);
                 }
@@ -965,6 +966,32 @@
                 }
                 try { $focusTarget.trigger('focus'); } catch (e) {}
             }
+        },
+
+        /* ───────── Make listing cards clickable ───────── */
+
+        // JetEngine's own "clickable listing item" script binds on page load, so
+        // it does not apply to the listing we inject afterwards. Reproduce it:
+        // make each grid item clickable using the article link it already
+        // contains (or a data-url), while leaving real links and buttons alone.
+        makeListingClickable: function ($scope) {
+            if (!$scope || !$scope.length) return;
+            $scope.find('.jet-listing-grid__item').each(function () {
+                var $item = $(this);
+                if ($item.data('asqClickBound')) return;
+                var href = $item.attr('data-url')
+                    || $item.find('.jet-listing-dynamic-link__link[href]').first().attr('href')
+                    || $item.find('a[href]').first().attr('href')
+                    || '';
+                if (!href) return;
+                $item.data('asqClickBound', true);
+                $item.css('cursor', 'pointer');
+                $item.on('click', function (e) {
+                    // Let genuine links, buttons and form controls behave normally.
+                    if ($(e.target).closest('a, button, input, select, textarea, label').length) return;
+                    window.location.href = href;
+                });
+            });
         },
 
         /* ───────── Re-sort read-next ───────── */
@@ -1002,6 +1029,7 @@
                     var rn = (res.data.reading_readnext_html || '').trim();
                     if (rn) {
                         $wrap.html(rn).prop('hidden', false);
+                        self.makeListingClickable($wrap);
                         // Keep the dropdown focused after the swap for keyboard use.
                         try { $wrap.find('.asq-readnext-sort').trigger('focus'); } catch (e) {}
                     }
