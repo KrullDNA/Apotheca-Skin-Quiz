@@ -143,15 +143,15 @@ class ASQ_Ajax {
         // true, so their articles can still appear.
         $rn_findings = ASQ_Engine::read_next_findings( $findings );
 
-        // Read-next options: how many articles, the visitor's chosen sort, and
-        // whether to offer the sort dropdown. Read-next can also render through a
-        // JetEngine Listing the owner set on the widget, so it matches their
-        // article grids; we feed it exactly the posts read-next would show. If
-        // JetEngine is absent or the listing renders nothing, we fall back to the
-        // built-in cards so the results screen never breaks.
+        // Read-next options: how many articles, and the owner's global sort order
+        // (set on the widget, applied for everyone, no visitor dropdown).
+        // Read-next can also render through a JetEngine Listing the owner set on
+        // the widget, so it matches their article grids; we feed it exactly the
+        // posts read-next would show. If JetEngine is absent or the listing
+        // renders nothing, we fall back to the built-in cards so the results
+        // screen never breaks.
         $rn_count        = min( 12, max( 1, absint( $_POST['rn_count'] ?? 6 ) ) );
         $rn_sort         = ASQ_Read_Next::clean_sort( sanitize_key( wp_unslash( $_POST['rn_sort'] ?? 'relevance' ) ) );
-        $rn_show_sort    = ! empty( $_POST['rn_show_sort'] );
         $rn_listing_id     = absint( $_POST['rn_listing_id'] ?? 0 );
         $rn_listing_cols   = max( 1, absint( $_POST['rn_listing_columns'] ?? 3 ) );
         $rn_listing_cols_t = absint( $_POST['rn_listing_columns_tablet'] ?? 0 );
@@ -167,13 +167,11 @@ class ASQ_Ajax {
         }
 
         if ( '' !== $listing_html ) {
-            ASQ_Presenter::set_readnext_sort( $rn_sort, $rn_show_sort && $rn_item_count >= 2 );
             $split             = ASQ_Presenter::render_split( $findings, (array) $answers, array(), $decoder_url, $rn_new_tab, (array) $followup_answers );
             $split['readnext'] = ASQ_Presenter::render_readnext_custom( $listing_html );
         } else {
             $articles = ASQ_Read_Next::for_findings( $rn_findings, $source_id, $rn_count );
             $articles = ASQ_Read_Next::sort_cards( $articles, $rn_sort );
-            ASQ_Presenter::set_readnext_sort( $rn_sort, $rn_show_sort && count( $articles ) >= 2 );
             $split    = ASQ_Presenter::render_split( $findings, (array) $answers, $articles, $decoder_url, $rn_new_tab, (array) $followup_answers );
         }
 

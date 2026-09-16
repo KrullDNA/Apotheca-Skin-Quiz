@@ -74,7 +74,7 @@ class ASQ_Frontend {
             'rn_listing_columns_tablet' => 0,
             'rn_listing_columns_mobile' => 0,
             'rn_count'                  => 6,
-            'rn_show_sort'              => '',
+            'rn_sort'                   => 'relevance',
         ), $atts, 'apotheca_skin_quiz' );
 
         $finder_id = absint( $atts['id'] );
@@ -206,11 +206,11 @@ class ASQ_Frontend {
                     echo ' data-rn-listing-columns-mobile="' . esc_attr( absint( $atts['rn_listing_columns_mobile'] ) ) . '"';
                 }
             }
-            // Read-next article count and the sort dropdown toggle.
+            // Read-next article count and the owner's global sort order.
             echo ' data-rn-count="' . esc_attr( min( 12, max( 1, absint( $atts['rn_count'] ) ) ) ) . '"';
-            if ( ! empty( $atts['rn_show_sort'] ) ) {
-                echo ' data-rn-show-sort="1"';
-            }
+            $rn_sort_allowed = array( 'relevance', 'name_asc', 'name_desc', 'date_asc', 'date_desc' );
+            $rn_sort         = in_array( $atts['rn_sort'], $rn_sort_allowed, true ) ? $atts['rn_sort'] : 'relevance';
+            echo ' data-rn-sort="' . esc_attr( $rn_sort ) . '"';
         ?>>
 
             <!-- Progress bar -->
