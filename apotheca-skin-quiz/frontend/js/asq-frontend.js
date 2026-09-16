@@ -976,8 +976,13 @@
         // contains (or a data-url), while leaving real links and buttons alone.
         makeListingClickable: function ($scope) {
             if (!$scope || !$scope.length) return;
+            var newTab = !!this.rnNewTab;
             $scope.find('.jet-listing-grid__item').each(function () {
                 var $item = $(this);
+                // Honour the "open in a new tab" toggle on the real inner links too.
+                if (newTab) {
+                    $item.find('a[href]').attr('target', '_blank').attr('rel', 'noopener noreferrer');
+                }
                 if ($item.data('asqClickBound')) return;
                 var href = $item.attr('data-url')
                     || $item.find('.jet-listing-dynamic-link__link[href]').first().attr('href')
@@ -989,7 +994,11 @@
                 $item.on('click', function (e) {
                     // Let genuine links, buttons and form controls behave normally.
                     if ($(e.target).closest('a, button, input, select, textarea, label').length) return;
-                    window.location.href = href;
+                    if (newTab) {
+                        window.open(href, '_blank', 'noopener,noreferrer');
+                    } else {
+                        window.location.href = href;
+                    }
                 });
             });
         },
