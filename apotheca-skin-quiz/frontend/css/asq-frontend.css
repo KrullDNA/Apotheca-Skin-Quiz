@@ -1180,6 +1180,69 @@ i.asq-loading-icon {
     font-size: 17px;
 }
 
+/* === "Good to know" collapsible explainer === */
+/* A quiet, closed-by-default disclosure so the reading stays easy to scan while
+   the deeper "what does that mean, and what do I actually do" detail is one tap
+   away. Native <details>, so it works with no JavaScript. */
+.asq-reading-section--good_to_know {
+    margin-top: 4px;
+}
+.asq-goodtoknow {
+    border: 1px solid var(--asq-border, #e2e5e8);
+    border-radius: var(--asq-radius-sm, 10px);
+    background: var(--asq-goodtoknow-bg, #f7f8f9);
+    padding: 0;
+    overflow: hidden;
+}
+.asq-goodtoknow-summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--asq-text, #333);
+    user-select: none;
+}
+.asq-goodtoknow-summary::-webkit-details-marker { display: none; }
+/* A caret that rotates when the block opens. */
+.asq-goodtoknow-summary::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid var(--asq-text-light, #888);
+    border-bottom: 2px solid var(--asq-text-light, #888);
+    transform: rotate(-45deg);
+    transition: transform 0.18s ease;
+}
+.asq-goodtoknow[open] .asq-goodtoknow-summary::before {
+    transform: rotate(45deg);
+}
+.asq-goodtoknow-summary:focus-visible {
+    outline: 2px solid var(--asq-accent, #333);
+    outline-offset: -2px;
+}
+.asq-goodtoknow-body {
+    padding: 2px 18px 18px;
+}
+.asq-goodtoknow-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--asq-text, #333);
+    margin: 16px 0 6px;
+}
+.asq-goodtoknow-title:first-child {
+    margin-top: 4px;
+}
+.asq-goodtoknow-p {
+    font-size: 16px;
+    margin-bottom: 0;
+}
+
 /* === Exchange note on the first question === */
 .asq-exchange-note {
     font-size: 14px;

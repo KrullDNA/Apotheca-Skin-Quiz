@@ -79,6 +79,7 @@ class ASQ_Result_Wording {
                         'describing'   => __( 'What you\'re describing', 'apotheca-skin-quiz' ),
                         'probably_not' => __( 'What it probably isn\'t', 'apotheca-skin-quiz' ),
                         'worth_trying' => __( 'One or two things worth trying', 'apotheca-skin-quiz' ),
+                        'good_to_know' => __( 'Good to know (collapsible heading)', 'apotheca-skin-quiz' ),
                         'read_next'    => __( 'Read next', 'apotheca-skin-quiz' ),
                     );
                     foreach ( $section_labels as $key => $desc ) :
@@ -127,6 +128,10 @@ class ASQ_Result_Wording {
 
                         <p style="margin:10px 0 2px;font-weight:600;"><?php esc_html_e( 'One or two things worth trying', 'apotheca-skin-quiz' ); ?><?php if ( 'F12' === $fid ) : ?> <span class="description" style="font-weight:400;">(<?php esc_html_e( 'keep {decoder}…{/decoder} for the Decoder link', 'apotheca-skin-quiz' ); ?>)</span><?php endif; ?></p>
                         <textarea class="large-text" rows="3" name="asq_result[findings][<?php echo esc_attr( $fid ); ?>][worth_trying]" placeholder="<?php echo esc_attr( $fd['worth_trying']['text'] ?? '' ); ?>"><?php echo esc_textarea( $fe['worth_trying']['text'] ?? '' ); ?></textarea>
+
+                        <p style="margin:10px 0 2px;font-weight:600;"><?php esc_html_e( 'Good to know', 'apotheca-skin-quiz' ); ?> <span class="description" style="font-weight:400;">(<?php esc_html_e( 'the collapsible explainer; leave both blank to omit it for this result', 'apotheca-skin-quiz' ); ?>)</span></p>
+                        <input type="text" class="large-text" style="margin-bottom:6px;" name="asq_result[findings][<?php echo esc_attr( $fid ); ?>][learn_more][title]" value="<?php echo esc_attr( $fe['learn_more']['title'] ?? '' ); ?>" placeholder="<?php echo esc_attr( $fd['learn_more']['title'] ?? __( 'Sub-heading, e.g. What this means', 'apotheca-skin-quiz' ) ); ?>">
+                        <textarea class="large-text" rows="4" name="asq_result[findings][<?php echo esc_attr( $fid ); ?>][learn_more][text]" placeholder="<?php echo esc_attr( $fd['learn_more']['text'] ?? '' ); ?>"><?php echo esc_textarea( $fe['learn_more']['text'] ?? '' ); ?></textarea>
                     </fieldset>
                 <?php endforeach; ?>
 

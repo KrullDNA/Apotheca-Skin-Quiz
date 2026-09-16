@@ -134,6 +134,15 @@ class ASQ_Presenter {
                         : $fid;
                     $p['findings'][ $fid ]['worth_trying'] = array( 'key' => $key, 'text' => $fields['worth_trying'] );
                 }
+                // "Good to know" explainer: title and/or body may be reworded, or
+                // added to a finding that ships without one.
+                if ( ! empty( $fields['learn_more'] ) && is_array( $fields['learn_more'] ) ) {
+                    foreach ( array( 'title', 'text' ) as $lk ) {
+                        if ( isset( $fields['learn_more'][ $lk ] ) && '' !== $fields['learn_more'][ $lk ] ) {
+                            $p['findings'][ $fid ]['learn_more'][ $lk ] = $fields['learn_more'][ $lk ];
+                        }
+                    }
+                }
             }
         }
 
@@ -206,6 +215,26 @@ class ASQ_Presenter {
                         $entry['worth_trying'] = $v;
                     }
                 }
+                if ( isset( $fields['learn_more'] ) && is_array( $fields['learn_more'] ) ) {
+                    $lm = array();
+                    if ( isset( $fields['learn_more']['title'] ) ) {
+                        $v   = sanitize_text_field( $fields['learn_more']['title'] );
+                        $cur = $def['findings'][ $fid ]['learn_more']['title'] ?? '';
+                        if ( '' !== $v && $v !== $cur ) {
+                            $lm['title'] = $v;
+                        }
+                    }
+                    if ( isset( $fields['learn_more']['text'] ) ) {
+                        $v   = sanitize_textarea_field( $fields['learn_more']['text'] );
+                        $cur = $def['findings'][ $fid ]['learn_more']['text'] ?? '';
+                        if ( '' !== $v && $v !== $cur ) {
+                            $lm['text'] = $v;
+                        }
+                    }
+                    if ( $lm ) {
+                        $entry['learn_more'] = $lm;
+                    }
+                }
                 if ( $entry ) {
                     $clean['findings'][ $fid ] = $entry;
                 }
@@ -254,7 +283,9 @@ class ASQ_Presenter {
         $describing = array();
         $probably   = array();
         $tries      = array();
+        $learn      = array();
         $seen_try   = array();
+        $seen_learn = array();
 
         foreach ( (array) $findings as $f ) {
             $id = isset( $f['id'] ) ? $f['id'] : '';
@@ -268,6 +299,22 @@ class ASQ_Presenter {
             }
             if ( ! empty( $copy['probably_not'] ) ) {
                 $probably[] = self::resolve( $copy['probably_not'], $amap );
+            }
+            // The optional "Good to know" explainer for this finding. Gathered in
+            // finding order and shown collapsed, so the results stay easy to scan
+            // but the deeper "what does that mean, and what do I do" detail is a
+            // click away. De-duplicated by title, so two findings that share an
+            // explainer don't repeat it.
+            if ( ! empty( $copy['learn_more']['text'] ) ) {
+                $lt = isset( $copy['learn_more']['title'] ) ? $copy['learn_more']['title'] : '';
+                $lk = '' !== $lt ? $lt : $id;
+                if ( ! isset( $seen_learn[ $lk ] ) ) {
+                    $seen_learn[ $lk ] = true;
+                    $learn[] = array(
+                        'title' => $lt,
+                        'body'  => self::resolve( $copy['learn_more']['text'], $amap ),
+                    );
+                }
             }
             if ( ! empty( $copy['worth_trying']['text'] ) ) {
                 $key            = isset( $copy['worth_trying']['key'] ) ? $copy['worth_trying']['key'] : $id;
@@ -292,6 +339,13 @@ class ASQ_Presenter {
         }
         if ( $tries ) {
             $sections[] = array( 'key' => 'worth_trying', 'heading' => $p['sections']['worth_trying'], 'paragraphs' => $tries );
+        }
+        if ( $learn ) {
+            $sections[] = array(
+                'key'     => 'good_to_know',
+                'heading' => isset( $p['sections']['good_to_know'] ) ? $p['sections']['good_to_know'] : __( 'Good to know', 'apotheca-skin-quiz' ),
+                'entries' => $learn,
+            );
         }
         if ( ! empty( $articles ) ) {
             $sections[] = array(
@@ -425,6 +479,12 @@ class ASQ_Presenter {
      * Render one section (heading plus paragraphs, or the read-next cards).
      */
     protected static function render_section( $section ) {
+        // The "Good to know" block is a collapsed disclosure, not a plain
+        // heading-plus-paragraphs section, so it is built on its own.
+        if ( 'good_to_know' === $section['key'] ) {
+            return self::render_goodtoknow( $section );
+        }
+
         $html  = '<section class="asq-reading-section asq-reading-section--' . esc_attr( $section['key'] ) . '">';
         $html .= '<h3 class="asq-reading-heading">' . esc_html( self::texturize( $section['heading'] ) ) . '</h3>';
 
@@ -438,6 +498,37 @@ class ASQ_Presenter {
                 $html .= '<p class="asq-reading-p">' . $para . '</p>';
             }
         }
+        $html .= '</section>';
+        return $html;
+    }
+
+    /**
+     * Render the "Good to know" block: a single collapsed disclosure holding a
+     * short explainer for each finding that fired. Native <details>/<summary>,
+     * so it opens and closes without any JavaScript and reads correctly to a
+     * screen reader. Collapsed by default so the results stay calm to scan.
+     */
+    protected static function render_goodtoknow( $section ) {
+        $entries = isset( $section['entries'] ) ? (array) $section['entries'] : array();
+        if ( empty( $entries ) ) {
+            return '';
+        }
+
+        $html  = '<section class="asq-reading-section asq-reading-section--good_to_know">';
+        $html .= '<details class="asq-goodtoknow">';
+        $html .= '<summary class="asq-goodtoknow-summary">' . esc_html( self::texturize( $section['heading'] ) ) . '</summary>';
+        $html .= '<div class="asq-goodtoknow-body">';
+        foreach ( $entries as $entry ) {
+            if ( ! empty( $entry['title'] ) ) {
+                $html .= '<h4 class="asq-goodtoknow-title">' . esc_html( self::texturize( $entry['title'] ) ) . '</h4>';
+            }
+            if ( ! empty( $entry['body'] ) ) {
+                // Body is already token-resolved and texturised in build_reading.
+                $html .= '<p class="asq-reading-p asq-goodtoknow-p">' . $entry['body'] . '</p>';
+            }
+        }
+        $html .= '</div>';
+        $html .= '</details>';
         $html .= '</section>';
         return $html;
     }

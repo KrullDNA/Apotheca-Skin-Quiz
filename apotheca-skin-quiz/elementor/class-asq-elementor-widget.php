@@ -2230,6 +2230,15 @@ class ASQ_Elementor_Widget extends Widget_Base {
                             <h3 class="asq-reading-heading"><?php esc_html_e( 'One or two things worth trying', 'apotheca-skin-quiz' ); ?></h3>
                             <p class="asq-reading-p"><?php esc_html_e( 'A third sample paragraph.', 'apotheca-skin-quiz' ); ?></p>
                         </section>
+                        <section class="asq-reading-section asq-reading-section--good_to_know">
+                            <details class="asq-goodtoknow" open>
+                                <summary class="asq-goodtoknow-summary"><?php esc_html_e( 'Good to know', 'apotheca-skin-quiz' ); ?></summary>
+                                <div class="asq-goodtoknow-body">
+                                    <h4 class="asq-goodtoknow-title"><?php esc_html_e( 'A short, plain explainer', 'apotheca-skin-quiz' ); ?></h4>
+                                    <p class="asq-reading-p asq-goodtoknow-p"><?php esc_html_e( 'The optional deeper detail sits here, collapsed by default on the live results so the reading stays easy to scan.', 'apotheca-skin-quiz' ); ?></p>
+                                </div>
+                            </details>
+                        </section>
                     </div>
                     <div class="asq-readnext-jump-wrap"><button type="button" class="asq-btn asq-btn-secondary asq-readnext-jump"><?php esc_html_e( "See what's worth reading", 'apotheca-skin-quiz' ); ?></button></div>
                 </div>
